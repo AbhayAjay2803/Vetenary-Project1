@@ -1,10 +1,11 @@
+# app.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import os
 import sys
+import joblib
 
 # Add src to path
 sys.path.append('src')
@@ -55,6 +56,9 @@ st.markdown("""
         border-radius: 10px;
         margin: 10px 0;
     }
+    .stButton button {
+        width: 100%;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -86,20 +90,19 @@ class VeterinaryApp:
     def render_sidebar(self):
         """Render sidebar with configuration and information"""
         st.sidebar.title("⚙️ Configuration")
-        
+    
         # API Key Configuration
         st.sidebar.subheader("🔑 AI API Configuration")
         api_key = st.sidebar.text_input("OpenAI API Key", type="password", 
-                                       help="Enter your OpenAI API key for AI-generated reports")
-        api_type = st.sidebar.selectbox("API Type", ["OpenAI", "Grok"])
-        
+                                   help="Enter your OpenAI API key for AI-generated reports")
+    
         if st.sidebar.button("Save API Key"):
             if api_key:
-                save_api_key(api_key, api_type.lower())
+                save_api_key(api_key)
                 st.sidebar.success("✅ API key saved successfully!")
             else:
                 st.sidebar.error("❌ Please enter a valid API key")
-        
+    
         # Model Information
         st.sidebar.subheader("🤖 Model Information")
         if self.models_loaded:
@@ -109,17 +112,41 @@ class VeterinaryApp:
             st.sidebar.write(f"**Symptoms:** {len(self.predictor.get_available_symptoms())}")
         else:
             st.sidebar.error("❌ Models not loaded")
-        
-        # Best Performing Model Info
+    
+        # Best Performing Model Info - WILL BE UPDATED AFTER TRAINING
         st.sidebar.subheader("🏆 Best Performing Model")
-        st.sidebar.info("""
-        **Improved Structured Clinical Transformer**
-        - Accuracy: 84.0%
-        - F1-Score: 84.3%
-        - AUC: 91.0%
-        """)
-        
-        # Quick Tips
+    
+        # Try to load performance summary
+        performance_file = 'models/performance_summary.joblib'
+        if os.path.exists(performance_file):
+            try:
+                performance_data = joblib.load(performance_file)
+                best_model = performance_data['best_model']
+            
+                st.sidebar.info(f"""
+                **{best_model['Model']}**
+                - Accuracy: {best_model['Accuracy']}
+                - F1-Score: {best_model['F1-Score']}
+                - AUC: {best_model['AUC']}
+                """)
+            except Exception as e:
+                # Fallback to default if there's an error
+                st.sidebar.info("""
+                **Improved Structured Clinical Transformer**
+                - Accuracy: Loading...
+                - F1-Score: Loading...
+                - AUC: Loading...
+                """)
+        else:
+            # Default info before training
+            st.sidebar.info("""
+            **Improved Structured Clinical Transformer**
+            - Accuracy: 84.0%
+            - F1-Score: 84.3%
+            - AUC: 91.0%
+            """)
+    
+    # Quick Tips
         st.sidebar.subheader("💡 Quick Tips")
         st.sidebar.info("""
         - Select multiple symptoms for comprehensive assessment
@@ -303,7 +330,7 @@ class VeterinaryApp:
             """)
         
         # AI Generated Report
-        if st.button("📋 Generate Detailed Veterinary Report", type="primary"):
+        if st.button("📋 Generate Detailed Veterinary Report", type="primary", use_container_width=True):
             with st.spinner("Generating professional veterinary report..."):
                 report = generate_vet_report(prediction_result, animal_info, symptoms)
                 
@@ -322,7 +349,47 @@ class VeterinaryApp:
         """Render model performance comparison"""
         st.header("📈 Model Performance Comparison")
         
-        # Sample performance data (replace with actual metrics)
+        # Try to load performance data from training
+        performance_file = 'models/performance_summary.joblib'
+        if os.path.exists(performance_file):
+            try:
+                performance_data = joblib.load(performance_file)
+                results_data = performance_data['detailed_results']
+                
+                # Convert to DataFrame
+                df = pd.DataFrame(results_data)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.subheader("Performance Metrics (25,000 Samples)")
+                    st.dataframe(df.style.format({
+                        'Accuracy': '{:.3f}',
+                        'F1-Score': '{:.3f}', 
+                        'AUC': '{:.3f}'
+                    }).highlight_max(color='lightgreen'), use_container_width=True)
+                
+                with col2:
+                    st.subheader("Performance Visualization")
+                    # Convert to numeric for plotting
+                    plot_df = df.copy()
+                    for col in ['Accuracy', 'F1-Score', 'AUC']:
+                        plot_df[col] = plot_df[col].astype(float)
+                    
+                    fig = px.bar(plot_df, x='Model', y=['Accuracy', 'F1-Score', 'AUC'],
+                                title="Model Performance Comparison (25,000 Samples)",
+                                barmode='group')
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                return
+                
+            except Exception as e:
+                st.warning(f"Could not load performance data: {e}")
+        
+        # Fallback to sample data if performance file doesn't exist
+        st.warning("Performance data not available. Using sample data.")
+        
+        # Sample performance data (replace with actual metrics after training)
         performance_data = {
             'Model': ['Improved SCT', 'LSTM', 'Random Forest', 'Neural Network', 'XGBoost'],
             'Accuracy': [0.840, 0.816, 0.818, 0.801, 0.823],
@@ -375,7 +442,10 @@ class VeterinaryApp:
                 - xgboost.joblib
                 - encoders.joblib
                 
-                If models are not available, please run the training script first.
+                If models are not available, please run the training script first:
+                ```bash
+                python train_models.py
+                ```
                 """)
             else:
                 # Input section
@@ -434,6 +504,7 @@ class VeterinaryApp:
             - **Interface**: Streamlit
             - **AI Integration**: OpenAI GPT for report generation
             - **Deployment**: Ready for production deployment
+            - **Dataset**: 25,000 synthetic veterinary cases
             """)
 
 def main():

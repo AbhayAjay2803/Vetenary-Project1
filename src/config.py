@@ -1,15 +1,20 @@
+# src/config.py
 import os
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
 class Config:
-    # API Keys
+    # API Keys with fallbacks
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
-    GROK_API_KEY = os.getenv('GROK_API_KEY', '')
     
     # Model paths
-    MODEL_DIR = "models/"
+    MODEL_DIR = os.getenv('MODEL_DIR', 'models/')
+    
+    # Application settings
+    DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     
     # Available animals and breeds
     ANIMAL_BREEDS = {

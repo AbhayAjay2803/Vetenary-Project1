@@ -1,27 +1,44 @@
+# utils/helpers.py
 import os
 import json
 from datetime import datetime
 import openai
 from src.config import Config
+import streamlit as st
 
-def save_api_key(api_key, api_type='openai'):
+def save_api_key(api_key):
     """Save API key to .env file"""
-    with open('.env', 'w') as f:
-        if api_type == 'openai':
-            f.write(f'OPENAI_API_KEY={api_key}\n')
-        elif api_type == 'grok':
-            f.write(f'GROK_API_KEY={api_key}\n')
-    
-    # Update config
-    if api_type == 'openai':
+    try:
+        env_vars = {}
+        
+        # Read existing .env file if it exists
+        if os.path.exists('.env'):
+            with open('.env', 'r') as f:
+                for line in f:
+                    if '=' in line:
+                        key, value = line.strip().split('=', 1)
+                        env_vars[key] = value
+        
+        # Update the OpenAI API key
+        env_vars['OPENAI_API_KEY'] = api_key
+        
+        # Write back to .env file
+        with open('.env', 'w') as f:
+            for key, value in env_vars.items():
+                f.write(f'{key}={value}\n')
+        
+        # Update config immediately
         Config.OPENAI_API_KEY = api_key
-    elif api_type == 'grok':
-        Config.GROK_API_KEY = api_key
+            
+        return True
+    except Exception as e:
+        st.error(f"Error saving API key: {e}")
+        return False
 
 def generate_vet_report(prediction_result, animal_info, symptoms):
     """Generate a veterinary report using AI"""
     if not Config.OPENAI_API_KEY:
-        return "API key not configured. Please set up OpenAI API key in settings."
+        return "API key not configured. Please set up OpenAI API key in the sidebar settings."
     
     try:
         client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
@@ -76,6 +93,12 @@ def generate_vet_report(prediction_result, animal_info, symptoms):
         
         return report
         
+    except openai.AuthenticationError:
+        return "Error: Invalid API key. Please check your OpenAI API key in the settings."
+    except openai.APIConnectionError:
+        return "Error: Unable to connect to OpenAI API. Please check your internet connection."
+    except openai.RateLimitError:
+        return "Error: API rate limit exceeded. Please try again later."
     except Exception as e:
         return f"Error generating report: {str(e)}"
 
@@ -90,28 +113,31 @@ def get_risk_color(probability):
 
 def format_symptom_analysis(symptoms, predictor):
     """Format symptom analysis for display"""
-    if not symptoms:
+    if not symptoms or not predictor.loaded:
         return ""
     
-    analysis = "### 🔍 Symptom Analysis\n\n"
-    total_severity = 0
-    high_risk_count = 0
-    
-    for symptom in symptoms:
-        severity = predictor.data_loader.symptom_severity_weights.get(symptom, 0.1)
-        total_severity += severity
+    try:
+        analysis = "### 🔍 Symptom Analysis\n\n"
+        total_severity = 0
+        high_risk_count = 0
         
-        if severity > 0.7:
-            risk_level = "🔴 HIGH RISK"
-            high_risk_count += 1
-        elif severity > 0.4:
-            risk_level = "🟡 MEDIUM RISK"
-        else:
-            risk_level = "🟢 LOW RISK"
+        for symptom in symptoms:
+            severity = predictor.data_loader.symptom_severity_weights.get(symptom, 0.1)
+            total_severity += severity
+            
+            if severity > 0.7:
+                risk_level = "🔴 HIGH RISK"
+                high_risk_count += 1
+            elif severity > 0.4:
+                risk_level = "🟡 MEDIUM RISK"
+            else:
+                risk_level = "🟢 LOW RISK"
+            
+            analysis += f"- **{symptom}**: {risk_level} (Severity: {severity:.2f})\n"
         
-        analysis += f"- **{symptom}**: {risk_level} (Severity: {severity:.2f})\n"
-    
-    if high_risk_count > 0:
-        analysis += f"\n**Warning**: {high_risk_count} high-risk symptom(s) detected!\n"
-    
-    return analysis
+        if high_risk_count > 0:
+            analysis += f"\n⚠️ **Warning**: {high_risk_count} high-risk symptom(s) detected!\n"
+        
+        return analysis
+    except Exception as e:
+        return f"Error analyzing symptoms: {str(e)}"
