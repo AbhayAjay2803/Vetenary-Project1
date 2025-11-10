@@ -46,8 +46,8 @@ def train_traditional_models(X, y, models_dir):
     # Random Forest
     print("[] Training Random Forest...")
     rf_model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=15,
+        n_estimators=200,  # Increased for larger dataset
+        max_depth=20,
         min_samples_split=5,
         min_samples_leaf=2,
         random_state=42,
@@ -79,16 +79,16 @@ def train_traditional_models(X, y, models_dir):
     X_test_scaled = scaler.transform(X_test)
     
     nn_model = MLPClassifier(
-        hidden_layer_sizes=(64, 32),
+        hidden_layer_sizes=(128, 64),  # Increased for larger dataset
         activation='relu',
         solver='adam',
         alpha=0.001,
         learning_rate='adaptive',
-        max_iter=500,
+        max_iter=1000,  # Increased for larger dataset
         random_state=42,
         early_stopping=True,
         validation_fraction=0.1,
-        n_iter_no_change=10
+        n_iter_no_change=15
     )
     nn_model.fit(X_train_scaled, y_train)
     models['NeuralNetwork'] = nn_model
@@ -113,8 +113,8 @@ def train_traditional_models(X, y, models_dir):
     # XGBoost
     print("[] Training XGBoost...")
     xgb_model = xgb.XGBClassifier(
-        n_estimators=100,
-        max_depth=6,
+        n_estimators=200,  # Increased for larger dataset
+        max_depth=8,
         learning_rate=0.1,
         subsample=0.8,
         colsample_bytree=0.8,
@@ -152,7 +152,7 @@ def train_traditional_models(X, y, models_dir):
 def main():
     """Main training function"""
     print("=" * 80)
-    print("VETERINARY HEALTH ASSESSMENT - COMPREHENSIVE MODEL TRAINING")
+    print("VETERINARY HEALTH ASSESSMENT - COMPREHENSIVE MODEL TRAINING (25,000 SAMPLES)")
     print("=" * 80)
     
     # Create models directory
@@ -166,7 +166,7 @@ def main():
     # Step 1: Load and preprocess data
     print("\n[STEP 1] Loading and preprocessing veterinary dataset...")
     data_loader = VeterinaryDatasetLoader()
-    df = data_loader.create_comprehensive_dataset(n_samples=5000)
+    df = data_loader.create_comprehensive_dataset(n_samples=25000)  # CHANGED: 25,000 samples
     processed_df = data_loader.preprocess_data(df)
     
     # Step 2: Prepare features
@@ -192,7 +192,7 @@ def main():
     print("[] Training Improved Structured Clinical Transformer...")
     sct_trainer = ImprovedSCTTrainer(feature_engineer, data_loader)
     sct_results = sct_trainer.train_improved_sct(
-        sct_features, epochs=25, learning_rate=1.5e-3, batch_size=32
+        sct_features, epochs=35, learning_rate=1.5e-3, batch_size=64  # Increased epochs for larger dataset
     )
     
     # Save SCT model
@@ -206,7 +206,7 @@ def main():
     print("[] Training LSTM Model...")
     lstm_trainer = LSTMTrainer(feature_engineer, data_loader)
     lstm_results = lstm_trainer.train_lstm(
-        sct_features, epochs=15, learning_rate=1e-3, batch_size=32
+        sct_features, epochs=25, learning_rate=1e-3, batch_size=64  # Increased epochs for larger dataset
     )
     
     # Save LSTM model
@@ -262,7 +262,7 @@ def main():
     
     results_df = pd.DataFrame(results_data)
     print("\n" + "=" * 100)
-    print("COMPREHENSIVE MODEL PERFORMANCE COMPARISON")
+    print("COMPREHENSIVE MODEL PERFORMANCE COMPARISON (25,000 SAMPLES)")
     print("=" * 100)
     print(results_df.to_string(index=False))
     

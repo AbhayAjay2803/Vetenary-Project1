@@ -33,7 +33,7 @@ class ImprovedSCTTrainer:
         )
         return DataLoader(tensor_dataset, batch_size=batch_size, shuffle=shuffle)
 
-    def train_improved_sct(self, features_dict, epochs=25, learning_rate=1e-3, batch_size=32):
+    def train_improved_sct(self, features_dict, epochs=35, learning_rate=1.5e-3, batch_size=64):  # Increased epochs and batch size
         """Train improved SCT model with enhanced training strategy"""
         print("[] Training IMPROVED Structured Clinical Transformer...")
 
@@ -94,7 +94,7 @@ class ImprovedSCTTrainer:
 
         best_val_f1 = 0
         best_val_loss = float('inf')
-        patience = 10
+        patience = 12  # Increased patience for larger dataset
         patience_counter = 0
 
         print("\n[] Starting IMPROVED SCT Training...")
@@ -280,7 +280,7 @@ class LSTMTrainer:
         )
         return DataLoader(tensor_dataset, batch_size=batch_size, shuffle=shuffle)
 
-    def train_lstm(self, features_dict, epochs=15, learning_rate=1e-3, batch_size=32):
+    def train_lstm(self, features_dict, epochs=25, learning_rate=1e-3, batch_size=64):  # Increased epochs and batch size
         """Train LSTM model"""
         print("[] Training LSTM Model...")
 
@@ -321,11 +321,11 @@ class LSTMTrainer:
         # Training setup
         optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
         criterion = nn.BCELoss()
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=6, factor=0.5)  # Increased patience
 
         best_val_loss = float('inf')
         best_val_f1 = 0
-        patience = 8
+        patience = 10  # Increased patience for larger dataset
         patience_counter = 0
 
         print("\n[] Starting LSTM Training...")
