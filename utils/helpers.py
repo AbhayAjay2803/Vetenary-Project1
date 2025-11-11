@@ -1,6 +1,8 @@
 # utils/helpers.py
 import os
 import json
+import time
+import random
 from datetime import datetime
 import openai
 from src.config import Config
@@ -35,73 +37,74 @@ def save_api_key(api_key):
         st.error(f"Error saving API key: {e}")
         return False
 
-def generate_vet_report(prediction_result, animal_info, symptoms):
-    """Generate a comprehensive veterinary report using AI"""
+def generate_vet_report(prediction_result, animal_info, symptoms, max_retries=3):
+    """Generate a comprehensive veterinary report using AI with retry logic"""
     if not Config.OPENAI_API_KEY:
-        return "API key not configured. Please set up OpenAI API key in the sidebar settings."
+        raise ValueError("API key not configured. Please set up OpenAI API key in the sidebar settings.")
     
-    try:
-        client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
-        
-        prompt = f"""
-        Generate a comprehensive veterinary medical report and action plan based on the following assessment:
+    for attempt in range(max_retries):
+        try:
+            client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
+            
+            prompt = f"""
+            Generate a comprehensive veterinary medical report and action plan based on the following assessment:
 
-        PATIENT INFORMATION:
-        - Species: {animal_info['animal']}
-        - Breed: {animal_info['breed']}
-        - Age: {animal_info['age']}
-        - Weight: {animal_info['weight']} kg
+            PATIENT INFORMATION:
+            - Species: {animal_info['animal']}
+            - Breed: {animal_info['breed']}
+            - Age: {animal_info['age']}
+            - Weight: {animal_info['weight']} kg
 
-        PRESENTING SYMPTOMS: {', '.join(symptoms)}
+            PRESENTING SYMPTOMS: {', '.join(symptoms)}
 
-        RISK ASSESSMENT:
-        - Overall Risk Level: {'HIGH - EMERGENCY' if prediction_result['ensemble']['dangerous'] else 'LOW - MONITOR'}
-        - Confidence: {prediction_result['ensemble']['confidence']}
-        - Model Agreement: {prediction_result['ensemble']['model_agreement']}
-        - Risk Probability: {prediction_result['ensemble']['probability']:.1%}
+            RISK ASSESSMENT:
+            - Overall Risk Level: {'HIGH - EMERGENCY' if prediction_result['ensemble']['dangerous'] else 'LOW - MONITOR'}
+            - Confidence: {prediction_result['ensemble']['confidence']}
+            - Model Agreement: {prediction_result['ensemble']['model_agreement']}
+            - Risk Probability: {prediction_result['ensemble']['probability']:.1%}
 
-        Please provide a DETAILED VETERINARY REPORT with CLEAR SECTIONS for:
+            Please provide a DETAILED VETERINARY REPORT with CLEAR SECTIONS for:
 
-        ## WHAT TO DO - IMMEDIATE ACTIONS
-        Provide specific, actionable steps the pet owner should take immediately. Include:
-        - Step-by-step immediate care instructions
-        - Home care and monitoring guidelines
-        - When to seek emergency veterinary care
-        - Specific treatments or first aid if applicable
+            ## WHAT TO DO - IMMEDIATE ACTIONS
+            Provide specific, actionable steps the pet owner should take immediately. Include:
+            - Step-by-step immediate care instructions
+            - Home care and monitoring guidelines
+            - When to seek emergency veterinary care
+            - Specific treatments or first aid if applicable
 
-        ## WHAT NOT TO DO - IMPORTANT PRECAUTIONS
-        List critical things to avoid. Include:
-        - Common dangerous home remedies to avoid
-        - Medications NOT to administer without veterinary guidance
-        - Activities or foods to restrict
-        - Mistakes that could worsen the condition
+            ## WHAT NOT TO DO - IMPORTANT PRECAUTIONS
+            List critical things to avoid. Include:
+            - Common dangerous home remedies to avoid
+            - Medications NOT to administer without veterinary guidance
+            - Activities or foods to restrict
+            - Mistakes that could worsen the condition
 
-        ## EMERGENCY INDICATORS
-        List specific red flag symptoms that require immediate veterinary attention.
+            ## EMERGENCY INDICATORS
+            List specific red flag symptoms that require immediate veterinary attention.
 
-        ## FOLLOW-UP CARE
-        Provide guidelines for ongoing care and monitoring.
+            ## FOLLOW-UP CARE
+            Provide guidelines for ongoing care and monitoring.
 
-        Format the report with clear section headers and bullet points for easy reading.
-        Use simple, direct language that pet owners can easily understand and follow.
-        Focus on safety and practical advice.
-        """
-        
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are an experienced veterinary physician. Provide detailed, professional medical reports with clear do's and don'ts for pet owners. Focus on safety and actionable advice. Use clear section headers and bullet points."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=2000,
-            temperature=0.7
-        )
-        
-        report = response.choices[0].message.content
-        
-        # Add header with timestamp and case information
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        header = f"""
+            Format the report with clear section headers and bullet points for easy reading.
+            Use simple, direct language that pet owners can easily understand and follow.
+            Focus on safety and practical advice.
+            """
+            
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are an experienced veterinary physician. Provide detailed, professional medical reports with clear do's and don'ts for pet owners. Focus on safety and actionable advice. Use clear section headers and bullet points."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=2000,
+                temperature=0.7
+            )
+            
+            report = response.choices[0].message.content
+            
+            # Add header with timestamp and case information
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            header = f"""
 VETERINARY HEALTH ASSESSMENT REPORT
 Generated: {timestamp}
 Case ID: {animal_info['animal']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}
@@ -118,27 +121,57 @@ PATIENT SUMMARY:
 {'='*80}
 
 """
+            
+            full_report = header + report
+            
+            # Save report to file (optional - don't fail if this doesn't work)
+            try:
+                report_filename = f"reports/generated_reports/vet_report_{animal_info['animal']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                os.makedirs(os.path.dirname(report_filename), exist_ok=True)
+                with open(report_filename, 'w') as f:
+                    f.write(full_report)
+            except Exception as file_error:
+                # Don't fail the whole operation if file saving fails
+                print(f"Warning: Could not save report to file: {file_error}")
+            
+            return full_report
+            
+        except openai.AuthenticationError as e:
+            raise ValueError(f"Invalid API key. Please check your OpenAI API key in the settings. Error: {e}")
         
-        full_report = header + report
+        except openai.RateLimitError as e:
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) + random.random()
+                print(f"Rate limit hit, waiting {wait_time:.2f} seconds before retry {attempt + 1}/{max_retries}")
+                time.sleep(wait_time)
+                continue
+            else:
+                raise Exception(f"API rate limit exceeded after {max_retries} retries. Please try again in a few minutes. Error: {e}")
         
-        # Save report to file
-        report_filename = f"reports/generated_reports/vet_report_{animal_info['animal']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        except openai.APIConnectionError as e:
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) + random.random()
+                print(f"API connection error, waiting {wait_time:.2f} seconds before retry {attempt + 1}/{max_retries}")
+                time.sleep(wait_time)
+                continue
+            else:
+                raise Exception(f"Unable to connect to OpenAI API after {max_retries} retries. Please check your internet connection. Error: {e}")
         
-        os.makedirs(os.path.dirname(report_filename), exist_ok=True)
+        except openai.APIError as e:
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) + random.random()
+                print(f"API error, waiting {wait_time:.2f} seconds before retry {attempt + 1}/{max_retries}")
+                time.sleep(wait_time)
+                continue
+            else:
+                raise Exception(f"OpenAI API error after {max_retries} retries: {e}")
         
-        with open(report_filename, 'w') as f:
-            f.write(full_report)
-        
-        return full_report
-        
-    except openai.AuthenticationError:
-        return "Error: Invalid API key. Please check your OpenAI API key in the settings."
-    except openai.APIConnectionError:
-        return "Error: Unable to connect to OpenAI API. Please check your internet connection."
-    except openai.RateLimitError:
-        return "Error: API rate limit exceeded. Please try again later."
-    except Exception as e:
-        return f"Error generating report: {str(e)}"
+        except Exception as e:
+            # For any other unexpected errors, don't retry
+            raise Exception(f"Unexpected error generating report: {e}")
+    
+    # This should never be reached, but just in case
+    raise Exception("Failed to generate report after maximum retries")
 
 def get_risk_color(probability):
     """Get color based on risk probability"""
@@ -151,8 +184,8 @@ def get_risk_color(probability):
 
 def format_symptom_analysis(symptoms, predictor):
     """Format symptom analysis for display"""
-    if not symptoms or not predictor.loaded:
-        return ""
+    if not symptoms or not hasattr(predictor, 'loaded') or not predictor.loaded:
+        return "### 🔍 Symptom Analysis\n\n*Symptom analysis not available*"
     
     try:
         analysis = "### 🔍 Symptom Analysis\n\n"
@@ -161,6 +194,7 @@ def format_symptom_analysis(symptoms, predictor):
         medium_risk_count = 0
         
         for symptom in symptoms:
+            # Use get method with default to avoid KeyError
             severity = predictor.data_loader.symptom_severity_weights.get(symptom, 0.1)
             total_severity += severity
             
@@ -188,4 +222,4 @@ def format_symptom_analysis(symptoms, predictor):
         
         return analysis
     except Exception as e:
-        return f"Error analyzing symptoms: {str(e)}"
+        return f"### 🔍 Symptom Analysis\n\n*Error analyzing symptoms: {str(e)}*"
