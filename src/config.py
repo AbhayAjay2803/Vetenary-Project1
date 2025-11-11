@@ -7,7 +7,7 @@ load_dotenv()
 
 class Config:
     # API Keys with fallbacks
-    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     
     # Model paths
     MODEL_DIR = os.getenv('MODEL_DIR', 'models/')

@@ -7,8 +7,6 @@ import os
 import sys
 import joblib
 import base64
-import time
-import random
 from datetime import datetime
 
 # Add src to path
@@ -79,6 +77,7 @@ st.markdown("""
         font-weight: bold;
     }
     .stButton button {
+        width: 100%;
         border-radius: 8px;
         font-weight: bold;
     }
@@ -98,34 +97,6 @@ st.markdown("""
         text-align: center;
         font-weight: bold;
     }
-    .what-to-do {
-        background-color: #d4edda;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 6px solid #28a745;
-        margin: 10px 0;
-    }
-    .what-not-to-do {
-        background-color: #f8d7da;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 6px solid #dc3545;
-        margin: 10px 0;
-    }
-    .api-warning {
-        background-color: #fff3cd;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 6px solid #ffc107;
-        margin: 10px 0;
-    }
-    .api-error {
-        background-color: #f8d7da;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 6px solid #dc3545;
-        margin: 10px 0;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -133,30 +104,6 @@ def get_download_link(content, filename, text):
     """Generate a download link for text content"""
     b64 = base64.b64encode(content.encode()).decode()
     return f'<a href="data:file/txt;base64,{b64}" download="{filename}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold;">{text}</a>'
-
-def generate_vet_report_with_retry(prediction_result, animal_info, symptoms, max_retries=3):
-    """Generate vet report with retry logic for API rate limits"""
-    for attempt in range(max_retries):
-        try:
-            report = generate_vet_report(prediction_result, animal_info, symptoms)
-            return report
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "rate limit" in error_msg or "quota" in error_msg:
-                wait_time = (2 ** attempt) + random.random()  # Exponential backoff with jitter
-                if attempt < max_retries - 1:
-                    st.warning(f"⚠️ API rate limit reached. Retrying in {wait_time:.1f} seconds...")
-                    time.sleep(wait_time)
-                else:
-                    st.error("❌ API rate limit exceeded. Please try again in a few minutes.")
-                    return None
-            elif "authentication" in error_msg or "api key" in error_msg:
-                st.error("❌ Invalid API key. Please check your OpenAI API key in the sidebar.")
-                return None
-            else:
-                st.error(f"❌ Error generating report: {e}")
-                return None
-    return None
 
 class VeterinaryApp:
     def __init__(self):
@@ -189,32 +136,15 @@ class VeterinaryApp:
         
         # API Key Configuration
         st.sidebar.subheader("🔑 AI API Configuration")
-        api_key = st.sidebar.text_input("OpenAI API Key", type="password", 
-                                       help="Enter your OpenAI API key for AI-generated reports")
+        api_key = st.sidebar.text_input("Gemini API Key", type="password", 
+                                       help="Enter your Google Gemini API key for AI-generated reports")
         
         if st.sidebar.button("Save API Key"):
             if api_key:
                 save_api_key(api_key)
                 st.sidebar.success("✅ API key saved successfully!")
-                
-                # Clear any cached reports when API key changes
-                if 'generated_report' in st.session_state:
-                    del st.session_state.generated_report
-                if 'report_generated' in st.session_state:
-                    st.session_state.report_generated = False
             else:
                 st.sidebar.error("❌ Please enter a valid API key")
-        
-        # API Usage Tips
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("📊 API Usage Tips")
-        st.sidebar.info("""
-        **To avoid rate limits:**
-        - Use reports sparingly
-        - One report per case is usually sufficient
-        - Reports are cached during your session
-        - Free tier has limited requests per hour
-        """)
         
         # Model Information
         st.sidebar.subheader("🤖 Model Information")
@@ -322,43 +252,6 @@ class VeterinaryApp:
             'weight': weight,
             'symptoms': symptoms
         }
-
-    def extract_what_to_do_and_not_do(self, report):
-        """Extract What to Do and What Not to Do sections from the report"""
-        what_to_do = ""
-        what_not_to_do = ""
-        
-        # Try to find sections in the report
-        lines = report.split('\n')
-        in_what_to_do = False
-        in_what_not_to_do = False
-        
-        for line in lines:
-            line_lower = line.lower()
-            
-            # Check for section headers
-            if any(phrase in line_lower for phrase in ['what to do', 'immediate actions', 'do:', 'actions:']):
-                in_what_to_do = True
-                in_what_not_to_do = False
-                what_to_do += line + '\n'
-            elif any(phrase in line_lower for phrase in ['what not to do', 'avoid', 'don\'t', 'do not', 'precautions']):
-                in_what_not_to_do = True
-                in_what_to_do = False
-                what_not_to_do += line + '\n'
-            elif line.strip() == '':
-                # Reset on empty lines (likely section breaks)
-                in_what_to_do = False
-                in_what_not_to_do = False
-            elif in_what_to_do:
-                what_to_do += line + '\n'
-            elif in_what_not_to_do:
-                what_not_to_do += line + '\n'
-        
-        # If we couldn't extract specific sections, use the entire report
-        if not what_to_do and not what_not_to_do:
-            what_to_do = report
-        
-        return what_to_do.strip(), what_not_to_do.strip()
 
     def render_prediction_results(self, prediction_result, animal_info, symptoms):
         """Render prediction results with downloadable report"""
@@ -480,76 +373,57 @@ class VeterinaryApp:
         
         # AI Generated Detailed Report Section
         st.markdown("---")
-        st.subheader("📋 AI-Powered Detailed Veterinary Report")
+        st.subheader("📋 Detailed Veterinary Report")
         
-        # API Status Warning
-        if not Config.OPENAI_API_KEY:
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
             st.markdown("""
-            <div class="api-warning">
-                <strong>⚠️ API Key Required</strong><br>
-                To generate AI reports, please enter your OpenAI API key in the sidebar configuration.
-                You can get an API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>.
-            </div>
-            """, unsafe_allow_html=True)
+            **Generate a comprehensive veterinary report using Gemini AI including:**
+            - 🟢 **What to do** - Immediate actions and care instructions
+            - 🔴 **What not to do** - Important precautions and warnings
+            - Detailed assessment and analysis
+            - Emergency action plan if needed
+            """)
         
-        # Check if we need to generate a new report
-        if 'generated_report' not in st.session_state:
-            st.session_state.generated_report = None
-            st.session_state.report_generated = False
+        with col2:
+            if st.button("🤖 Generate AI Report", type="primary", use_container_width=True):
+                # Store the action in session state to prevent rerun
+                st.session_state.generate_report_clicked = True
         
-        # Generate report button
-        if st.button("🤖 Generate AI Detailed Report", type="primary", use_container_width=True):
-            if not Config.OPENAI_API_KEY:
-                st.error("⚠️ Please set up your OpenAI API key in the sidebar first!")
-            else:
-                # Show AI thinking message
-                with st.spinner("🤔 AI is thinking... Generating comprehensive veterinary report..."):
-                    report = generate_vet_report_with_retry(prediction_result, animal_info, symptoms)
-                    
-                    if report:
-                        # Store report in session state
-                        st.session_state.generated_report = report
-                        st.session_state.report_generated = True
-                        st.session_state.animal_info = animal_info
-                        
-                        # Extract what to do and what not to do
-                        what_to_do, what_not_to_do = self.extract_what_to_do_and_not_do(report)
-                        st.session_state.what_to_do = what_to_do
-                        st.session_state.what_not_to_do = what_not_to_do
-                        
-                        st.success("✅ AI Report Generated Successfully!")
-                    else:
-                        st.session_state.report_generated = False
+        # Handle report generation
+        if st.session_state.get('generate_report_clicked', False):
+            # Show AI thinking message
+            st.markdown('<div class="ai-thinking">🤔 AI is thinking... Generating detailed report with Gemini AI</div>', unsafe_allow_html=True)
+            
+            # Generate report
+            report = generate_vet_report(prediction_result, animal_info, symptoms)
+            
+            # Store report in session state
+            st.session_state.generated_report = report
+            st.session_state.report_generated = True
+            st.session_state.generate_report_clicked = False  # Reset the button state
+            
+            # Rerun to show the report
+            st.rerun()
         
-        # Display report if generated
+        # Display and download report if generated
         if st.session_state.get('report_generated', False):
             report = st.session_state.generated_report
-            what_to_do = st.session_state.get('what_to_do', '')
-            what_not_to_do = st.session_state.get('what_not_to_do', '')
             
             st.markdown('<div class="report-section">', unsafe_allow_html=True)
+            st.subheader("🏥 AI-Generated Veterinary Report (Powered by Gemini AI)")
             
-            # Display What to Do section
-            if what_to_do:
-                st.markdown("### ✅ What to Do")
-                st.markdown(f'<div class="what-to-do">{what_to_do}</div>', unsafe_allow_html=True)
-            
-            # Display What Not to Do section
-            if what_not_to_do:
-                st.markdown("### ❌ What Not to Do")
-                st.markdown(f'<div class="what-not-to-do">{what_not_to_do}</div>', unsafe_allow_html=True)
-            
-            # Full report in expandable section
-            with st.expander("📄 View Full Detailed Report", expanded=False):
-                st.text_area("Complete Veterinary Report", report, height=300, key="full_report_display")
+            # Display report in expandable text area
+            with st.expander("View Full Report", expanded=True):
+                st.text_area("Report Content", report, height=400, key="report_display")
             
             # Download button
-            st.markdown("### 📥 Download Full Report")
+            st.markdown("### 📥 Download Report")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            animal = st.session_state.get('animal_info', {}).get('animal', 'unknown')
-            filename = f"vet_report_{animal}_{timestamp}.txt"
+            filename = f"vet_report_{animal_info['animal']}_{timestamp}.txt"
             
-            st.markdown(get_download_link(report, filename, "📄 Download Complete Report"), unsafe_allow_html=True)
+            st.markdown(get_download_link(report, filename, "📄 Download Detailed Report"), unsafe_allow_html=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -630,7 +504,9 @@ class VeterinaryApp:
         if 'report_generated' not in st.session_state:
             st.session_state.report_generated = False
         if 'generated_report' not in st.session_state:
-            st.session_state.generated_report = None
+            st.session_state.generated_report = ""
+        if 'generate_report_clicked' not in st.session_state:
+            st.session_state.generate_report_clicked = False
         
         # Header
         st.markdown('<h1 class="main-header">🐾 Veterinary Health Assessment System</h1>', 
@@ -670,7 +546,7 @@ class VeterinaryApp:
                     if not animal_info['symptoms']:
                         st.warning("⚠️ Please select at least one symptom")
                     else:
-                        with st.spinner("🤖 AI models are analyzing the symptoms..."):
+                        with st.spinner("Analyzing health status..."):
                             prediction_result = self.predictor.predict_ensemble(
                                 animal_info['animal'],
                                 animal_info['breed'], 
@@ -679,16 +555,18 @@ class VeterinaryApp:
                                 animal_info['symptoms']
                             )
                         
-                        # Store prediction in session state to prevent reset
+                        # Store results in session state
                         st.session_state.prediction_result = prediction_result
-                        st.session_state.current_animal_info = animal_info
+                        st.session_state.animal_info = animal_info
+                        st.session_state.symptoms = animal_info['symptoms']
+                        st.session_state.assessment_done = True
                 
-                # Display results if we have a prediction
-                if 'prediction_result' in st.session_state:
+                # Show results if assessment is done
+                if st.session_state.get('assessment_done', False):
                     self.render_prediction_results(
                         st.session_state.prediction_result,
-                        st.session_state.current_animal_info,
-                        st.session_state.current_animal_info['symptoms']
+                        st.session_state.animal_info,
+                        st.session_state.symptoms
                     )
         
         with tab2:
@@ -719,6 +597,11 @@ class VeterinaryApp:
             - **Random Forest** (8% weight): Ensemble decision trees
             - **Neural Network** (7% weight): Multi-layer perceptron
             
+            ### 🧠 AI Report Generation
+            - **Powered by Google Gemini AI**: Generates detailed veterinary reports
+            - **Clear instructions**: What to do and what not to do
+            - **Downloadable reports**: Professional format for sharing with veterinarians
+            
             ### ⚠️ Important Disclaimer
             This tool is for preliminary assessment only and should not replace professional veterinary care. 
             Always consult a licensed veterinarian for accurate diagnosis and treatment.
@@ -726,7 +609,7 @@ class VeterinaryApp:
             ### 🛠️ Technical Details
             - **Framework**: PyTorch, Scikit-learn, XGBoost
             - **Interface**: Streamlit
-            - **AI Integration**: OpenAI GPT for report generation
+            - **AI Integration**: Google Gemini AI for report generation
             - **Deployment**: Ready for production deployment
             - **Dataset**: 25,000 synthetic veterinary cases
             """)
