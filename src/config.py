@@ -1,38 +1,35 @@
-# src/config.py
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 class Config:
-    # API Keys with fallbacks
+    # API Keys
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     
     # Model paths
-    MODEL_DIR = os.getenv('MODEL_DIR', 'models/')
-    
-    # Application settings
-    DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
-    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    MODEL_DIR = "models/"
     
     # Available animals and breeds
     ANIMAL_BREEDS = {
-        'dog': ['labrador', 'german_shepherd', 'golden_retriever', 'bulldog', 'poodle'],
-        'cat': ['siamese', 'persian', 'maine_coon', 'bengal', 'ragdoll'],
-        'cow': ['holstein', 'angus', 'hereford', 'jersey'],
-        'horse': ['arabian', 'quarter_horse', 'thoroughbred'],
-        'rabbit': ['dutch', 'flemish_giant', 'rex'],
-        'goat': ['boer', 'nubian', 'alpine'],
-        'sheep': ['merino', 'dorset', 'suffolk'],
-        'chicken': ['rhode_island_red', 'leghorn', 'sussex'],
-        'pig': ['yorkshire', 'duroc', 'hampshire'],
-        'parrot': ['african_grey', 'macaw', 'cockatoo'],
-        'hamster': ['syrian', 'dwarf', 'roborovski'],
-        'guinea_pig': ['american', 'abby', 'peruvian'],
-        'turtle': ['red_eared_slider', 'box_turtle', 'painted_turtle'],
-        'duck': ['pekin', 'mallard', 'muscovy'],
-        'turkey': ['broad_breasted_bronze', 'bourbon_red', 'narragansett']
+        'dog': ['labrador', 'german_shepherd', 'golden_retriever', 'bulldog', 'poodle',
+               'beagle', 'boxer', 'dachshund', 'siberian_husky', 'australian_shepherd'],
+        'cat': ['siamese', 'persian', 'maine_coon', 'bengal', 'ragdoll',
+               'british_shorthair', 'sphynx', 'russian_blue', 'scottish_fold', 'burmese'],
+        'cow': ['holstein', 'angus', 'hereford', 'jersey', 'guernsey', 'limousin', 'charolais'],
+        'horse': ['arabian', 'quarter_horse', 'thoroughbred', 'appaloosa', 'andalusian',
+                 'friesian', 'mustang', 'clydesdale'],
+        'rabbit': ['dutch', 'flemish_giant', 'rex', 'mini_lop', 'lionhead', 'holland_lop'],
+        'goat': ['boer', 'nubian', 'alpine', 'saanen', 'toggenburg'],
+        'sheep': ['merino', 'dorset', 'suffolk', 'rambouillet', 'dorper'],
+        'chicken': ['rhode_island_red', 'leghorn', 'sussex', 'plymouth_rock', 'silkie'],
+        'pig': ['yorkshire', 'duroc', 'hampshire', 'berkshire', 'landrace'],
+        'parrot': ['african_grey', 'macaw', 'cockatoo', 'amazon', 'cockatiel', 'budgerigar'],
+        'hamster': ['syrian', 'dwarf', 'roborovski', 'campbell', 'winter_white'],
+        'guinea_pig': ['american', 'abby', 'peruvian', 'silkie', 'teddy'],
+        'turtle': ['red_eared_slider', 'box_turtle', 'painted_turtle', 'snapping_turtle'],
+        'duck': ['pekin', 'mallard', 'muscovy', 'rouen', 'khaki_campbell'],
+        'turkey': ['broad_breasted_bronze', 'bourbon_red', 'narragansett', 'royal_palm']
     }
     
     SYMPTOMS = [
