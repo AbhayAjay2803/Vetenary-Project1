@@ -6,6 +6,8 @@ import plotly.graph_objects as go
 import os
 import sys
 import joblib
+import base64
+from datetime import datetime
 
 # Add src to path
 sys.path.append('src')
@@ -23,7 +25,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS with better colors
 st.markdown("""
 <style>
     .main-header {
@@ -34,33 +36,87 @@ st.markdown("""
     }
     .risk-high {
         background-color: #ffcccc;
-        padding: 10px;
-        border-radius: 5px;
-        border-left: 5px solid #ff0000;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 6px solid #ff0000;
+        margin: 10px 0;
     }
     .risk-medium {
         background-color: #fff4cc;
-        padding: 10px;
-        border-radius: 5px;
-        border-left: 5px solid #ffcc00;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 6px solid #ffcc00;
+        margin: 10px 0;
     }
     .risk-low {
-        background-color: #ccffcc;
-        padding: 10px;
-        border-radius: 5px;
-        border-left: 5px solid #00cc00;
+        background-color: #e6ffe6;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 6px solid #00cc00;
+        margin: 10px 0;
     }
     .model-card {
-        background-color: #f0f2f6;
+        background-color: #f8f9fa;
         padding: 15px;
         border-radius: 10px;
         margin: 10px 0;
+        border: 1px solid #dee2e6;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .model-confidence {
+        color: #2c3e50;
+        font-weight: bold;
+        font-size: 14px;
+    }
+    .model-status-safe {
+        color: #27ae60;
+        font-weight: bold;
+    }
+    .model-status-dangerous {
+        color: #e74c3c;
+        font-weight: bold;
     }
     .stButton button {
-        width: 100%;
+        border-radius: 8px;
+        font-weight: bold;
+    }
+    .report-section {
+        background-color: #f0f8ff;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #b3d9ff;
+        margin: 15px 0;
+    }
+    .ai-thinking {
+        background-color: #fff3cd;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 6px solid #ffc107;
+        margin: 10px 0;
+        text-align: center;
+        font-weight: bold;
+    }
+    .what-to-do {
+        background-color: #d4edda;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 6px solid #28a745;
+        margin: 10px 0;
+    }
+    .what-not-to-do {
+        background-color: #f8d7da;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 6px solid #dc3545;
+        margin: 10px 0;
     }
 </style>
 """, unsafe_allow_html=True)
+
+def get_download_link(content, filename, text):
+    """Generate a download link for text content"""
+    b64 = base64.b64encode(content.encode()).decode()
+    return f'<a href="data:file/txt;base64,{b64}" download="{filename}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold;">{text}</a>'
 
 class VeterinaryApp:
     def __init__(self):
@@ -90,19 +146,19 @@ class VeterinaryApp:
     def render_sidebar(self):
         """Render sidebar with configuration and information"""
         st.sidebar.title("⚙️ Configuration")
-    
+        
         # API Key Configuration
         st.sidebar.subheader("🔑 AI API Configuration")
         api_key = st.sidebar.text_input("OpenAI API Key", type="password", 
-                                   help="Enter your OpenAI API key for AI-generated reports")
-    
+                                       help="Enter your OpenAI API key for AI-generated reports")
+        
         if st.sidebar.button("Save API Key"):
             if api_key:
                 save_api_key(api_key)
                 st.sidebar.success("✅ API key saved successfully!")
             else:
                 st.sidebar.error("❌ Please enter a valid API key")
-    
+        
         # Model Information
         st.sidebar.subheader("🤖 Model Information")
         if self.models_loaded:
@@ -112,17 +168,17 @@ class VeterinaryApp:
             st.sidebar.write(f"**Symptoms:** {len(self.predictor.get_available_symptoms())}")
         else:
             st.sidebar.error("❌ Models not loaded")
-    
-        # Best Performing Model Info - WILL BE UPDATED AFTER TRAINING
+        
+        # Best Performing Model Info
         st.sidebar.subheader("🏆 Best Performing Model")
-    
+        
         # Try to load performance summary
         performance_file = 'models/performance_summary.joblib'
         if os.path.exists(performance_file):
             try:
                 performance_data = joblib.load(performance_file)
                 best_model = performance_data['best_model']
-            
+                
                 st.sidebar.info(f"""
                 **{best_model['Model']}**
                 - Accuracy: {best_model['Accuracy']}
@@ -130,7 +186,6 @@ class VeterinaryApp:
                 - AUC: {best_model['AUC']}
                 """)
             except Exception as e:
-                # Fallback to default if there's an error
                 st.sidebar.info("""
                 **Improved Structured Clinical Transformer**
                 - Accuracy: Loading...
@@ -138,15 +193,14 @@ class VeterinaryApp:
                 - AUC: Loading...
                 """)
         else:
-            # Default info before training
             st.sidebar.info("""
             **Improved Structured Clinical Transformer**
             - Accuracy: 84.0%
             - F1-Score: 84.3%
             - AUC: 91.0%
             """)
-    
-    # Quick Tips
+        
+        # Quick Tips
         st.sidebar.subheader("💡 Quick Tips")
         st.sidebar.info("""
         - Select multiple symptoms for comprehensive assessment
@@ -212,8 +266,45 @@ class VeterinaryApp:
             'symptoms': symptoms
         }
 
+    def extract_what_to_do_and_not_do(self, report):
+        """Extract What to Do and What Not to Do sections from the report"""
+        what_to_do = ""
+        what_not_to_do = ""
+        
+        # Try to find sections in the report
+        lines = report.split('\n')
+        in_what_to_do = False
+        in_what_not_to_do = False
+        
+        for line in lines:
+            line_lower = line.lower()
+            
+            # Check for section headers
+            if any(phrase in line_lower for phrase in ['what to do', 'immediate actions', 'do:', 'actions:']):
+                in_what_to_do = True
+                in_what_not_to_do = False
+                what_to_do += line + '\n'
+            elif any(phrase in line_lower for phrase in ['what not to do', 'avoid', 'don\'t', 'do not', 'precautions']):
+                in_what_not_to_do = True
+                in_what_to_do = False
+                what_not_to_do += line + '\n'
+            elif line.strip() == '':
+                # Reset on empty lines (likely section breaks)
+                in_what_to_do = False
+                in_what_not_to_do = False
+            elif in_what_to_do:
+                what_to_do += line + '\n'
+            elif in_what_not_to_do:
+                what_not_to_do += line + '\n'
+        
+        # If we couldn't extract specific sections, use the entire report
+        if not what_to_do and not what_not_to_do:
+            what_to_do = report
+        
+        return what_to_do.strip(), what_not_to_do.strip()
+
     def render_prediction_results(self, prediction_result, animal_info, symptoms):
-        """Render prediction results"""
+        """Render prediction results with downloadable report"""
         if not isinstance(prediction_result, dict) or 'ensemble' not in prediction_result:
             st.error(f"Prediction error: {prediction_result}")
             return
@@ -251,14 +342,15 @@ class VeterinaryApp:
             # Individual Model Predictions
             st.subheader("🤖 Individual Model Predictions")
             for model_name, prediction in prediction_result['individual_predictions'].items():
+                status_class = "model-status-dangerous" if prediction['dangerous'] else "model-status-safe"
                 status_icon = "🔴" if prediction['dangerous'] else "🟢"
                 status_text = "DANGEROUS" if prediction['dangerous'] else "SAFE"
                 
                 st.markdown(f"""
                 <div class="model-card">
                     <strong>{model_name}</strong><br>
-                    Status: {status_icon} {status_text}<br>
-                    Confidence: {prediction['confidence']}<br>
+                    <span class="{status_class}">Status: {status_icon} {status_text}</span><br>
+                    <span class="model-confidence">Confidence: {prediction['confidence']}</span><br>
                     Probability: {prediction['probability']:.3f}
                 </div>
                 """, unsafe_allow_html=True)
@@ -296,7 +388,7 @@ class VeterinaryApp:
             st.plotly_chart(fig, use_container_width=True)
         
         # Recommendations
-        st.subheader("💡 Recommendations")
+        st.subheader("💡 Immediate Recommendations")
         if ensemble['dangerous']:
             st.error("""
             ## 🚨 URGENT VETERINARY ATTENTION REQUIRED
@@ -329,21 +421,66 @@ class VeterinaryApp:
             - Development of new symptoms
             """)
         
-        # AI Generated Report
-        if st.button("📋 Generate Detailed Veterinary Report", type="primary", use_container_width=True):
-            with st.spinner("Generating professional veterinary report..."):
-                report = generate_vet_report(prediction_result, animal_info, symptoms)
-                
-                st.subheader("🏥 AI-Generated Veterinary Report")
-                st.text_area("Report", report, height=400)
-                
-                # Download button
-                st.download_button(
-                    label="📥 Download Report",
-                    data=report,
-                    file_name=f"vet_report_{animal_info['animal']}.txt",
-                    mime="text/plain"
-                )
+        # AI Generated Detailed Report Section
+        st.markdown("---")
+        st.subheader("📋 AI-Powered Detailed Veterinary Report")
+        
+        # Check if we need to generate a new report
+        if 'generated_report' not in st.session_state:
+            st.session_state.generated_report = None
+            st.session_state.report_generated = False
+        
+        # Generate report button
+        if st.button("🤖 Generate AI Detailed Report", type="primary", use_container_width=True):
+            if not Config.OPENAI_API_KEY:
+                st.error("⚠️ Please set up your OpenAI API key in the sidebar first!")
+            else:
+                # Show AI thinking message
+                with st.spinner("🤔 AI is thinking... Generating comprehensive veterinary report..."):
+                    report = generate_vet_report(prediction_result, animal_info, symptoms)
+                    
+                    # Store report in session state
+                    st.session_state.generated_report = report
+                    st.session_state.report_generated = True
+                    st.session_state.animal_info = animal_info
+                    
+                    # Extract what to do and what not to do
+                    what_to_do, what_not_to_do = self.extract_what_to_do_and_not_do(report)
+                    st.session_state.what_to_do = what_to_do
+                    st.session_state.what_not_to_do = what_not_to_do
+        
+        # Display report if generated
+        if st.session_state.get('report_generated', False):
+            report = st.session_state.generated_report
+            what_to_do = st.session_state.get('what_to_do', '')
+            what_not_to_do = st.session_state.get('what_not_to_do', '')
+            
+            st.markdown('<div class="report-section">', unsafe_allow_html=True)
+            st.success("✅ AI Report Generated Successfully!")
+            
+            # Display What to Do section
+            if what_to_do:
+                st.markdown("### ✅ What to Do")
+                st.markdown(f'<div class="what-to-do">{what_to_do}</div>', unsafe_allow_html=True)
+            
+            # Display What Not to Do section
+            if what_not_to_do:
+                st.markdown("### ❌ What Not to Do")
+                st.markdown(f'<div class="what-not-to-do">{what_not_to_do}</div>', unsafe_allow_html=True)
+            
+            # Full report in expandable section
+            with st.expander("📄 View Full Detailed Report", expanded=False):
+                st.text_area("Complete Veterinary Report", report, height=300, key="full_report_display")
+            
+            # Download button
+            st.markdown("### 📥 Download Full Report")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            animal = st.session_state.get('animal_info', {}).get('animal', 'unknown')
+            filename = f"vet_report_{animal}_{timestamp}.txt"
+            
+            st.markdown(get_download_link(report, filename, "📄 Download Complete Report"), unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
 
     def render_model_comparison(self):
         """Render model performance comparison"""
@@ -389,7 +526,7 @@ class VeterinaryApp:
         # Fallback to sample data if performance file doesn't exist
         st.warning("Performance data not available. Using sample data.")
         
-        # Sample performance data (replace with actual metrics after training)
+        # Sample performance data
         performance_data = {
             'Model': ['Improved SCT', 'LSTM', 'Random Forest', 'Neural Network', 'XGBoost'],
             'Accuracy': [0.840, 0.816, 0.818, 0.801, 0.823],
@@ -418,6 +555,12 @@ class VeterinaryApp:
 
     def run(self):
         """Main application runner"""
+        # Initialize session state for report
+        if 'report_generated' not in st.session_state:
+            st.session_state.report_generated = False
+        if 'generated_report' not in st.session_state:
+            st.session_state.generated_report = None
+        
         # Header
         st.markdown('<h1 class="main-header">🐾 Veterinary Health Assessment System</h1>', 
                    unsafe_allow_html=True)
@@ -456,7 +599,7 @@ class VeterinaryApp:
                     if not animal_info['symptoms']:
                         st.warning("⚠️ Please select at least one symptom")
                     else:
-                        with st.spinner("Analyzing health status..."):
+                        with st.spinner("🤖 AI models are analyzing the symptoms..."):
                             prediction_result = self.predictor.predict_ensemble(
                                 animal_info['animal'],
                                 animal_info['breed'], 
@@ -465,7 +608,17 @@ class VeterinaryApp:
                                 animal_info['symptoms']
                             )
                         
-                        self.render_prediction_results(prediction_result, animal_info, animal_info['symptoms'])
+                        # Store prediction in session state to prevent reset
+                        st.session_state.prediction_result = prediction_result
+                        st.session_state.current_animal_info = animal_info
+                
+                # Display results if we have a prediction
+                if 'prediction_result' in st.session_state:
+                    self.render_prediction_results(
+                        st.session_state.prediction_result,
+                        st.session_state.current_animal_info,
+                        st.session_state.current_animal_info['symptoms']
+                    )
         
         with tab2:
             self.render_model_comparison()
