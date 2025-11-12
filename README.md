@@ -10,7 +10,7 @@ An AI-powered veterinary health assessment system that uses ensemble machine lea
 - **Real-time Risk Assessment**: Immediate health risk evaluation
 - **Model Performance Tracking**: Comprehensive model comparison and analytics
 
-## 🏆 Best Performing Model
+## 🏆 Best Performing Model in Colab
 
 **Improved Structured Clinical Transformer (SCT)**
 - Accuracy: 84.0%

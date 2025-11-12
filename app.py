@@ -1,4 +1,4 @@
-# app.py - Updated with better visibility
+# app.py - Enhanced with professional styling
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -51,126 +51,258 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS with DARKER TEXT and better visibility
+# Professional CSS with improved color scheme
 st.markdown("""
 <style>
+    /* Main background and text */
+    .main {
+        background-color: #f8f9fa;
+    }
+    .main .block-container {
+        background-color: #ffffff;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Headers */
     .main-header {
         font-size: 3rem;
-        color: #1f77b4;
+        color: #2c3e50;
         text-align: center;
         margin-bottom: 2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
+    
+    /* Section headers */
+    h1, h2, h3 {
+        color: #2c3e50 !important;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Risk level cards */
     .risk-high {
-        background-color: #ffcccc;
-        padding: 15px;
-        border-radius: 10px;
-        border-left: 5px solid #ff0000;
-        margin: 10px 0;
-        color: #000000 !important;
+        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        padding: 20px;
+        border-radius: 15px;
+        margin: 15px 0;
+        color: white !important;
+        border-left: 6px solid #c0392b;
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
     }
     .risk-medium {
-        background-color: #fff4cc;
-        padding: 15px;
-        border-radius: 10px;
-        border-left: 5px solid #ffcc00;
-        margin: 10px 0;
-        color: #000000 !important;
+        background: linear-gradient(135deg, #feca57, #ff9ff3);
+        padding: 20px;
+        border-radius: 15px;
+        margin: 15px 0;
+        color: #2c3e50 !important;
+        border-left: 6px solid #f39c12;
+        box-shadow: 0 4px 15px rgba(254, 202, 87, 0.3);
     }
     .risk-low {
-        background-color: #ccffcc;
-        padding: 15px;
-        border-radius: 10px;
-        border-left: 5px solid #00cc00;
-        margin: 10px 0;
-        color: #000000 !important;
+        background: linear-gradient(135deg, #48dbfb, #0abde3);
+        padding: 20px;
+        border-radius: 15px;
+        margin: 15px 0;
+        color: white !important;
+        border-left: 6px solid #27ae60;
+        box-shadow: 0 4px 15px rgba(72, 219, 251, 0.3);
     }
+    
+    /* Model cards */
     .model-card {
-        background-color: #f8f9fa;
+        background: linear-gradient(135deg, #ffffff, #f8f9fa);
         padding: 15px;
-        border-radius: 10px;
+        border-radius: 12px;
         margin: 10px 0;
-        border-left: 4px solid #1f77b4;
-        color: #000000 !important;
+        border-left: 5px solid #3498db;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        color: #2c3e50 !important;
+        transition: transform 0.2s ease;
     }
+    .model-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    /* Confidence text */
     .confidence-text {
         color: #2c3e50 !important;
         font-weight: bold;
         font-size: 1.1em;
-        background-color: #ecf0f1;
-        padding: 2px 6px;
-        border-radius: 4px;
+        background: linear-gradient(135deg, #ecf0f1, #bdc3c7);
+        padding: 4px 8px;
+        border-radius: 6px;
+        display: inline-block;
     }
+    
+    /* Symptom items */
     .symptom-item {
-        padding: 8px;
-        margin: 4px 0;
-        border-radius: 5px;
-        border-left: 4px solid;
-        color: #000000 !important;
+        padding: 12px;
+        margin: 6px 0;
+        border-radius: 8px;
+        border-left: 5px solid;
+        color: #2c3e50 !important;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .symptom-item:hover {
+        transform: translateX(5px);
     }
     .high-risk-symptom {
         border-left-color: #e74c3c;
-        background-color: #ffebee;
-        color: #000000 !important;
+        background: linear-gradient(135deg, #ffebee, #ffcdd2);
+        color: #c62828 !important;
     }
     .medium-risk-symptom {
         border-left-color: #f39c12;
-        background-color: #fff3e0;
-        color: #000000 !important;
+        background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+        color: #ef6c00 !important;
     }
     .low-risk-symptom {
         border-left-color: #27ae60;
-        background-color: #e8f5e8;
-        color: #000000 !important;
+        background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+        color: #2e7d32 !important;
     }
+    
+    /* Report sections */
     .report-section {
-        background-color: #f8f9fa;
-        padding: 20px;
-        border-radius: 10px;
-        margin: 15px 0;
-        border-left: 4px solid #3498db;
-        color: #000000 !important;
-    }
-    .ai-thinking {
-        background-color: #e3f2fd;
-        padding: 20px;
-        border-radius: 10px;
-        border-left: 4px solid #2196f3;
-        text-align: center;
+        background: linear-gradient(135deg, #ffffff, #f8f9fa);
+        padding: 25px;
+        border-radius: 12px;
         margin: 20px 0;
-        color: #000000 !important;
+        border-left: 5px solid #3498db;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+        color: #2c3e50 !important;
+    }
+    
+    /* AI Thinking section */
+    .ai-thinking {
+        background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+        padding: 30px;
+        border-radius: 15px;
+        border-left: 6px solid #2196f3;
+        text-align: center;
+        margin: 25px 0;
+        color: #1565c0 !important;
+        box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
     }
     .blink {
-        animation: blink 1s infinite;
+        animation: blink 1.5s infinite;
     }
     @keyframes blink {
         0% { opacity: 1; }
-        50% { opacity: 0.5; }
+        50% { opacity: 0.7; }
         100% { opacity: 1; }
     }
-    /* DARK TEXT FOR ALL CONTENT */
-    .main .block-container {
-        color: #000000 !important;
+    
+    /* Sidebar styling */
+    .css-1d391kg, .css-1lcbmhc {
+        background: linear-gradient(135deg, #2c3e50, #34495e) !important;
     }
-    .stMarkdown {
-        color: #000000 !important;
+    .sidebar .sidebar-content {
+        background: linear-gradient(135deg, #2c3e50, #34495e) !important;
     }
-    .stText {
-        color: #000000 !important;
-    }
-    .report-text {
-        color: #000000 !important;
-        background-color: #ffffff !important;
-    }
+    
+    /* Text area for reports */
     .stTextArea textarea {
-        color: #000000 !important;
+        background-color: #f8f9fa !important;
+        color: #2c3e50 !important;
+        border: 2px solid #bdc3c7 !important;
+        border-radius: 8px !important;
+        font-family: 'Courier New', monospace !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+    }
+    
+    /* Buttons */
+    .stButton button {
+        background: linear-gradient(135deg, #3498db, #2980b9) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 12px 24px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+    }
+    .stButton button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4) !important;
+    }
+    
+    /* Download button */
+    .stDownloadButton button {
+        background: linear-gradient(135deg, #27ae60, #229954) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 12px 24px !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Clear button */
+    .stButton button:contains("Clear") {
+        background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+    }
+    
+    /* Input fields */
+    .stSelectbox, .stNumberInput, .stMultiselect {
         background-color: #ffffff !important;
+        border-radius: 8px !important;
     }
-    /* Table styling */
-    .dataframe {
-        color: #000000 !important;
+    
+    /* Metrics */
+    .stMetric {
+        background: linear-gradient(135deg, #ffffff, #f8f9fa) !important;
+        padding: 15px !important;
+        border-radius: 10px !important;
+        border: 2px solid #3498db !important;
+        text-align: center !important;
     }
-    .stDataFrame {
-        color: #000000 !important;
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #ecf0f1;
+        border-radius: 8px 8px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #3498db !important;
+        color: white !important;
+    }
+    
+    /* Success/Error messages */
+    .stSuccess {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb) !important;
+        border: 1px solid #c3e6cb !important;
+        color: #155724 !important;
+        border-radius: 8px !important;
+    }
+    .stError {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb) !important;
+        border: 1px solid #f5c6cb !important;
+        color: #721c24 !important;
+        border-radius: 8px !important;
+    }
+    .stWarning {
+        background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+        border: 1px solid #ffeaa7 !important;
+        color: #856404 !important;
+        border-radius: 8px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -230,33 +362,33 @@ class VeterinaryApp:
         st.sidebar.title("⚙️ Configuration")
         
         # AI Model Status
-        st.sidebar.subheader("🤖 Local AI Model")
+        st.sidebar.markdown("### 🤖 Local AI Model")
         if self.ai_model_loaded:
-            st.sidebar.success("✅ Local AI Model Ready")
-            st.sidebar.write("**Model:** DistilGPT-2")
-            st.sidebar.write("**Type:** Text Generation")
+            st.sidebar.success("✅ **Local AI Model Ready**")
+            st.sidebar.markdown("**Model:** DistilGPT-2")
+            st.sidebar.markdown("**Type:** Text Generation")
             if TORCH_AVAILABLE and torch is not None:
                 hardware = "GPU" if torch.cuda.is_available() else "CPU"
             else:
                 hardware = "CPU (PyTorch not available)"
-            st.sidebar.write(f"**Hardware:** {hardware}")
+            st.sidebar.markdown(f"**Hardware:** {hardware}")
         else:
-            st.sidebar.warning("⚠️ Using Fallback Reports")
-            st.sidebar.write("AI reports will use template-based generation")
+            st.sidebar.warning("⚠️ **Using Fallback Reports**")
+            st.sidebar.markdown("AI reports will use template-based generation")
         
         # Model Information
-        st.sidebar.subheader("🎯 Health Assessment Models")
+        st.sidebar.markdown("### 🎯 Health Assessment Models")
         if self.models_loaded:
-            st.sidebar.success("✅ Models loaded successfully!")
+            st.sidebar.success("✅ **Models loaded successfully!**")
             if hasattr(self.predictor, 'get_available_animals'):
-                st.sidebar.write(f"**Animals:** {len(self.predictor.get_available_animals())}")
+                st.sidebar.markdown(f"**Animals:** {len(self.predictor.get_available_animals())}")
             if hasattr(self.predictor, 'get_available_symptoms'):
-                st.sidebar.write(f"**Symptoms:** {len(self.predictor.get_available_symptoms())}")
+                st.sidebar.markdown(f"**Symptoms:** {len(self.predictor.get_available_symptoms())}")
         else:
-            st.sidebar.error("❌ Models not loaded")
+            st.sidebar.error("❌ **Models not loaded**")
         
         # Quick Tips
-        st.sidebar.subheader("💡 Quick Tips")
+        st.sidebar.markdown("### 💡 Quick Tips")
         st.sidebar.info("""
         - Select multiple symptoms for comprehensive assessment
         - High-risk symptoms significantly impact risk score
@@ -264,51 +396,58 @@ class VeterinaryApp:
         - Generate AI report for detailed veterinary guidance
         - Always consult a veterinarian for professional diagnosis
         """)
+        
+        # Footer
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("**Veterinary Health Assessment System**")
+        st.sidebar.markdown("*AI-Powered Animal Care*")
 
     def render_input_section(self):
         """Render input section for animal information"""
-        st.header("🐾 Patient Information")
+        st.markdown("### 🐾 Patient Information")
         
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            animal = st.selectbox(
-                "Animal Type",
-                options=list(Config.ANIMAL_BREEDS.keys()),
-                index=0,
-                help="Select the type of animal"
-            )
-        
-        with col2:
-            breed = st.selectbox(
-                "Breed",
-                options=Config.ANIMAL_BREEDS.get(animal, ['mixed']),
-                index=0,
-                help="Select the specific breed"
-            )
-        
-        with col3:
-            age = st.selectbox(
-                "Age Group",
-                options=["young", "adult", "senior"],
-                index=1,
-                help="Select the age category"
-            )
-        
-        with col4:
-            weight = st.number_input(
-                "Weight (kg)",
-                min_value=0.1,
-                max_value=1000.0,
-                value=25.0,
-                step=0.1,
-                help="Enter weight in kilograms"
-            )
+        # Create a nice container for the input section
+        with st.container():
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                animal = st.selectbox(
+                    "**Animal Type**",
+                    options=list(Config.ANIMAL_BREEDS.keys()),
+                    index=0,
+                    help="Select the type of animal"
+                )
+            
+            with col2:
+                breed = st.selectbox(
+                    "**Breed**",
+                    options=Config.ANIMAL_BREEDS.get(animal, ['mixed']),
+                    index=0,
+                    help="Select the specific breed"
+                )
+            
+            with col3:
+                age = st.selectbox(
+                    "**Age Group**",
+                    options=["young", "adult", "senior"],
+                    index=1,
+                    help="Select the age category"
+                )
+            
+            with col4:
+                weight = st.number_input(
+                    "**Weight (kg)**",
+                    min_value=0.1,
+                    max_value=1000.0,
+                    value=25.0,
+                    step=0.1,
+                    help="Enter weight in kilograms"
+                )
         
         # Symptoms Selection
-        st.subheader("🤒 Symptoms Selection")
+        st.markdown("### 🤒 Symptoms Selection")
         symptoms = st.multiselect(
-            "Select all applicable symptoms",
+            "**Select all applicable symptoms**",
             options=Config.SYMPTOMS,
             help="Choose all symptoms that apply",
             max_selections=10
@@ -316,7 +455,7 @@ class VeterinaryApp:
         
         # Display selected symptoms with risk levels
         if symptoms and self.models_loaded:
-            st.subheader("📊 Selected Symptoms Analysis")
+            st.markdown("### 📊 Selected Symptoms Analysis")
             for symptom in symptoms:
                 severity = self.predictor.data_loader.symptom_severity_weights.get(symptom, 0.1)
                 if severity > 0.7:
@@ -368,8 +507,9 @@ class VeterinaryApp:
         
         st.markdown(f"""
         <div class="{risk_class}">
-            <h2>{risk_icon} {risk_level}</h2>
-            <p><strong>Confidence:</strong> <span class="confidence-text">{ensemble['confidence']}</span> | 
+            <h2 style='color: inherit; margin: 0;'>{risk_icon} {risk_level}</h2>
+            <p style='color: inherit; margin: 10px 0 0 0; font-size: 1.1em;'>
+            <strong>Confidence:</strong> <span class="confidence-text">{ensemble['confidence']}</span> | 
             <strong>Model Agreement:</strong> {ensemble['model_agreement']} | 
             <strong>Risk Probability:</strong> {risk_score:.1%}</p>
         </div>
@@ -380,15 +520,15 @@ class VeterinaryApp:
         
         with col1:
             # Individual Model Predictions
-            st.subheader("🤖 Individual Model Predictions")
+            st.markdown("### 🤖 Individual Model Predictions")
             for model_name, prediction in prediction_result['individual_predictions'].items():
                 status_icon = "🔴" if prediction['dangerous'] else "🟢"
                 status_text = "DANGEROUS" if prediction['dangerous'] else "SAFE"
                 
                 st.markdown(f"""
                 <div class="model-card">
-                    <strong>{model_name}</strong><br>
-                    Status: {status_icon} {status_text}<br>
+                    <strong style='font-size: 1.1em;'>{model_name}</strong><br>
+                    <span style='font-size: 1.2em;'>{status_icon} {status_text}</span><br>
                     Confidence: <span class="confidence-text">{prediction['confidence']}</span><br>
                     Probability: {prediction['probability']:.3f}
                 </div>
@@ -396,23 +536,23 @@ class VeterinaryApp:
         
         with col2:
             # Risk Visualization
-            st.subheader("📊 Risk Visualization")
+            st.markdown("### 📊 Risk Visualization")
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number+delta",
                 value = risk_score * 100,
                 domain = {'x': [0, 1], 'y': [0, 1]},
-                title = {'text': "Risk Score", 'font': {'size': 24}},
+                title = {'text': "Risk Score", 'font': {'size': 24, 'color': '#2c3e50'}},
                 delta = {'reference': 50},
                 gauge = {
-                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
-                    'bar': {'color': "darkblue"},
+                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#2c3e50"},
+                    'bar': {'color': "#3498db"},
                     'bgcolor': "white",
                     'borderwidth': 2,
                     'bordercolor': "gray",
                     'steps': [
-                        {'range': [0, 30], 'color': "lightgreen"},
-                        {'range': [30, 70], 'color': "yellow"},
-                        {'range': [70, 100], 'color': "red"}
+                        {'range': [0, 30], 'color': "#27ae60"},
+                        {'range': [30, 70], 'color': "#f39c12"},
+                        {'range': [70, 100], 'color': "#e74c3c"}
                     ],
                     'threshold': {
                         'line': {'color': "red", 'width': 4},
@@ -421,22 +561,31 @@ class VeterinaryApp:
                     }
                 }
             ))
-            fig.update_layout(height=300, font={'color': "darkblue", 'family': "Arial"})
+            fig.update_layout(
+                height=300, 
+                font={'color': "#2c3e50", 'family': "Arial"},
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
             st.plotly_chart(fig, use_container_width=True)
             
             # Symptom Summary
             if symptoms:
-                st.subheader("🔍 Symptom Summary")
+                st.markdown("### 🔍 Symptom Summary")
                 high_risk_count = sum(1 for s in symptoms if self.predictor.data_loader.symptom_severity_weights.get(s, 0) > 0.7)
                 medium_risk_count = sum(1 for s in symptoms if 0.4 < self.predictor.data_loader.symptom_severity_weights.get(s, 0) <= 0.7)
                 
-                st.metric("Total Symptoms", len(symptoms))
-                st.metric("High-Risk Symptoms", high_risk_count)
-                st.metric("Medium-Risk Symptoms", medium_risk_count)
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Symptoms", len(symptoms))
+                with col2:
+                    st.metric("High-Risk Symptoms", high_risk_count)
+                with col3:
+                    st.metric("Medium-Risk Symptoms", medium_risk_count)
         
         # AI Generated Report Section
         st.markdown("---")
-        st.subheader("🏥 AI-Powered Veterinary Report")
+        st.markdown("### 🏥 AI-Powered Veterinary Report")
         
         # Initialize session state for report generation
         if 'report_generated' not in st.session_state:
@@ -448,10 +597,12 @@ class VeterinaryApp:
         
         # Generate Report Button
         if not st.session_state.generating_report and not st.session_state.report_generated:
-            if st.button("🧠 Generate AI Veterinary Report", type="primary", use_container_width=True):
-                st.session_state.generating_report = True
-                st.session_state.report_generated = False
-                st.rerun()
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("🧠 Generate AI Veterinary Report", type="primary", use_container_width=True):
+                    st.session_state.generating_report = True
+                    st.session_state.report_generated = False
+                    st.rerun()
         
         # Show AI Thinking Indicator
         if st.session_state.generating_report:
@@ -518,7 +669,7 @@ class VeterinaryApp:
         
         # Recommendations
         st.markdown("---")
-        st.subheader("💡 Immediate Recommendations")
+        st.markdown("### 💡 Immediate Recommendations")
         if ensemble['dangerous']:
             st.error("""
             ## 🚨 URGENT VETERINARY ATTENTION REQUIRED
@@ -545,63 +696,69 @@ class VeterinaryApp:
 
     def run(self):
         """Main application runner"""
-        # Header
-        st.markdown('<h1 class="main-header">🐾 Veterinary Health Assessment System</h1>', 
-                   unsafe_allow_html=True)
-        st.markdown("### *AI-Powered Animal Health Risk Assessment*")
+        # Header with gradient
+        st.markdown("""
+        <div style='text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; margin-bottom: 2rem;'>
+            <h1 class="main-header">🐾 Veterinary Health Assessment System</h1>
+            <h3 style='color: white; margin: 0;'>AI-Powered Animal Health Risk Assessment</h3>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Sidebar
         self.render_sidebar()
         
-        # Main content
-        if not self.models_loaded:
-            st.error("""
-            ## ❌ Models Not Loaded
-            
-            Please ensure all model files are present in the 'models' directory.
-            Run the training script first to generate the models.
-            """)
-        else:
-            # Input section
-            animal_info = self.render_input_section()
-            
-            # Assessment button
-            if st.button("🔍 Assess Health Status", type="primary", use_container_width=True):
-                # Clear previous reports when new assessment starts
-                if 'report_generated' in st.session_state:
-                    st.session_state.report_generated = False
-                if 'generated_report' in st.session_state:
-                    st.session_state.generated_report = None
-                if 'generating_report' in st.session_state:
-                    st.session_state.generating_report = False
+        # Main content in a nice container
+        with st.container():
+            if not self.models_loaded:
+                st.error("""
+                ## ❌ Models Not Loaded
                 
-                if not animal_info['symptoms']:
-                    st.warning("⚠️ Please select at least one symptom")
-                else:
-                    with st.spinner("🤖 Analyzing health status..."):
-                        try:
-                            prediction_result = self.predictor.predict_ensemble(
-                                animal_info['animal'],
-                                animal_info['breed'], 
-                                animal_info['age'],
-                                animal_info['weight'],
-                                animal_info['symptoms']
-                            )
-                            
-                            # Store prediction in session state
-                            st.session_state.prediction_result = prediction_result
-                            st.session_state.animal_info = animal_info
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"❌ Prediction error: {e}")
-            
-            # Display results if available
-            if 'prediction_result' in st.session_state and st.session_state.animal_info is not None:
-                self.render_prediction_results(
-                    st.session_state.prediction_result,
-                    st.session_state.animal_info,
-                    st.session_state.animal_info['symptoms']
-                )
+                Please ensure all model files are present in the 'models' directory.
+                Run the training script first to generate the models.
+                """)
+            else:
+                # Input section
+                animal_info = self.render_input_section()
+                
+                # Assessment button
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    if st.button("🔍 Assess Health Status", type="primary", use_container_width=True):
+                        # Clear previous reports when new assessment starts
+                        if 'report_generated' in st.session_state:
+                            st.session_state.report_generated = False
+                        if 'generated_report' in st.session_state:
+                            st.session_state.generated_report = None
+                        if 'generating_report' in st.session_state:
+                            st.session_state.generating_report = False
+                        
+                        if not animal_info['symptoms']:
+                            st.warning("⚠️ Please select at least one symptom")
+                        else:
+                            with st.spinner("🤖 Analyzing health status..."):
+                                try:
+                                    prediction_result = self.predictor.predict_ensemble(
+                                        animal_info['animal'],
+                                        animal_info['breed'], 
+                                        animal_info['age'],
+                                        animal_info['weight'],
+                                        animal_info['symptoms']
+                                    )
+                                    
+                                    # Store prediction in session state
+                                    st.session_state.prediction_result = prediction_result
+                                    st.session_state.animal_info = animal_info
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Prediction error: {e}")
+                
+                # Display results if available
+                if 'prediction_result' in st.session_state and st.session_state.animal_info is not None:
+                    self.render_prediction_results(
+                        st.session_state.prediction_result,
+                        st.session_state.animal_info,
+                        st.session_state.animal_info['symptoms']
+                    )
 
 def main():
     # Initialize session state variables

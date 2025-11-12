@@ -1,4 +1,4 @@
-# utils/helpers.py
+# utils/helpers.py - Updated with better report structure
 import os
 import json
 from datetime import datetime
@@ -67,7 +67,7 @@ def generate_vet_report_local(prediction_result, animal_info, symptoms):
             prompt,
             max_new_tokens=400,
             num_return_sequences=1,
-            temperature=0.8,  # Slightly higher for more creativity
+            temperature=0.8,
             do_sample=True,
             pad_token_id=50256,
             truncation=True,
@@ -93,173 +93,209 @@ def create_structured_prompt(prediction_result, animal_info, symptoms):
     confidence = prediction_result['ensemble']['confidence']
     probability = f"{prediction_result['ensemble']['probability']:.1%}"
     
-    # High-risk symptoms
-    high_risk_symptoms = [s for s in symptoms if prediction_result.get('symptom_severity', {}).get(s, 0) > 0.7]
-    
     prompt = f"""
-Create a veterinary medical report for a {animal_info['animal']}:
+Generate a professional veterinary medical report:
 
-Patient: {animal_info['breed']} {animal_info['animal']}, {animal_info['age']}, {animal_info['weight']}kg
-Symptoms: {', '.join(symptoms)}
-Risk Level: {risk_level} ({probability})
+PATIENT INFORMATION:
+- Species: {animal_info['animal']}
+- Breed: {animal_info['breed']} 
+- Age: {animal_info['age']}
+- Weight: {animal_info['weight']} kg
 
-Please generate a professional veterinary report with these sections:
+PRESENTING SYMPTOMS:
+{', '.join(symptoms)}
+
+RISK ASSESSMENT:
+- Level: {risk_level}
+- Confidence: {confidence}
+- Probability: {probability}
+
+Please create a detailed veterinary report with these sections:
 
 CLINICAL ASSESSMENT:
-Provide a clear assessment of the patient's condition based on the symptoms.
 
 KEY FINDINGS:
-- List the main clinical observations
-- Note any high-risk symptoms
 
 RECOMMENDED ACTIONS:
-- Immediate steps to take
-- Monitoring requirements
-- When to seek emergency care
 
-TREATMENT SUGGESTIONS:
-- Potential treatments to discuss with veterinarian
-- Supportive care recommendations
+TREATMENT CONSIDERATIONS:
 
 FOLLOW-UP PLAN:
-- Monitoring schedule
-- When to re-evaluate
 
 PROGNOSIS:
-- Expected outcome based on current assessment
 
-Please write a clear, professional report:
+Write a clear, professional veterinary report:
 """
     return prompt
 
 def format_structured_report(report):
     """Format the AI-generated report to ensure proper structure"""
-    # Clean up any weird formatting
-    report = report.replace('FACT:', '').replace('OF THE MONISCADORS', '').replace('AGE:', '')
-    report = report.replace('COMMUNITY:', '').replace('HIVING:', '').replace('EMBODY:', '')
-    report = report.replace('SUBJECT:', '').replace('MEMPHIS:', '').replace('MONISCA:', '')
-    report = report.replace('CHILD:', '').replace('TALE:', '').replace('THE DIVEST', '')
-    report = report.replace('LATEST FACTS', '').replace('ALL', '').replace('FOR THE MALE', '')
-    report = report.replace('THIRD PARTIES', '').replace('CHURCHIC REPORT', 'VETERINARY REPORT')
-    
-    # Ensure basic sections exist
-    sections = [
-        "CLINICAL ASSESSMENT:",
-        "KEY FINDINGS:", 
-        "RECOMMENDED ACTIONS:",
-        "TREATMENT SUGGESTIONS:",
-        "FOLLOW-UP PLAN:",
-        "PROGNOSIS:"
+    # Clean up any weird text patterns
+    unwanted_patterns = [
+        'FACT:', 'OF THE MONISCADORS', 'AGE:', 'COMMUNITY:', 'HIVING:', 'EMBODY:',
+        'SUBJECT:', 'MEMPHIS:', 'MONISCA:', 'CHILD:', 'TALE:', 'THE DIVEST',
+        'LATEST FACTS', 'ALL', 'FOR THE MALE', 'THIRD PARTIES', 'CHURCHIC REPORT'
     ]
+    
+    for pattern in unwanted_patterns:
+        report = report.replace(pattern, '')
+    
+    # Ensure basic sections exist with proper content
+    sections = {
+        "CLINICAL ASSESSMENT:": "Based on the presented symptoms and patient information, this case requires professional veterinary evaluation.",
+        "KEY FINDINGS:": "Multiple symptoms requiring assessment. Further diagnostic evaluation recommended.",
+        "RECOMMENDED ACTIONS:": "Schedule veterinary consultation. Monitor vital signs. Provide supportive care.",
+        "TREATMENT CONSIDERATIONS:": "Treatment should be determined by licensed veterinarian based on complete diagnostic workup.",
+        "FOLLOW-UP PLAN:": "Re-evaluate in 24 hours or if condition changes. Maintain communication with veterinary provider.",
+        "PROGNOSIS:": "Dependent on accurate diagnosis and timely treatment. Follow veterinary guidance for optimal outcomes."
+    }
     
     formatted_report = report
     
-    # Add missing sections with template content
-    for section in sections:
+    for section, default_content in sections.items():
         if section not in formatted_report:
-            if section == "CLINICAL ASSESSMENT:":
-                formatted_report += f"\n\n{section}\nBased on the presented symptoms, this case requires professional veterinary evaluation."
-            elif section == "KEY FINDINGS:":
-                formatted_report += f"\n\n{section}\n- Multiple symptoms present requiring assessment"
-            elif section == "RECOMMENDED ACTIONS:":
-                formatted_report += f"\n\n{section}\n- Schedule veterinary consultation\n- Monitor vital signs\n- Provide supportive care"
-            elif section == "TREATMENT SUGGESTIONS:":
-                formatted_report += f"\n\n{section}\n- Treatment should be determined by licensed veterinarian\n- Follow professional medical advice"
-            elif section == "FOLLOW-UP PLAN:":
-                formatted_report += f"\n\n{section}\n- Re-evaluate in 24 hours or if condition worsens\n- Maintain communication with veterinary provider"
-            elif section == "PROGNOSIS:":
-                formatted_report += f"\n\n{section}\n- Dependent on accurate diagnosis and timely treatment\n- Follow veterinary guidance for best outcomes"
+            formatted_report += f"\n\n{section}\n{default_content}"
+        else:
+            # Ensure section has meaningful content
+            section_start = formatted_report.find(section) + len(section)
+            next_section_start = len(formatted_report)
+            
+            # Find the start of the next section
+            for other_section in sections:
+                if other_section != section:
+                    other_pos = formatted_report.find(other_section, section_start)
+                    if other_pos != -1 and other_pos < next_section_start:
+                        next_section_start = other_pos
+            
+            section_content = formatted_report[section_start:next_section_start].strip()
+            if not section_content or len(section_content) < 10:
+                formatted_report = formatted_report.replace(section_content, f"\n{default_content}")
     
     return formatted_report
 
 def generate_structured_fallback_report(prediction_result, animal_info, symptoms):
-    """Generate a structured fallback report"""
+    """Generate a structured fallback report with table-like formatting"""
     
     risk_level = "HIGH - EMERGENCY" if prediction_result['ensemble']['dangerous'] else "LOW - MONITOR"
     confidence = prediction_result['ensemble']['confidence']
     
-    # Calculate symptom severity summary
-    high_risk_count = sum(1 for s in symptoms if prediction_result.get('symptom_severity', {}).get(s, 0) > 0.7)
-    medium_risk_count = sum(1 for s in symptoms if 0.4 < prediction_result.get('symptom_severity', {}).get(s, 0) <= 0.7)
+    # Calculate symptom analysis
+    high_risk_symptoms = []
+    medium_risk_symptoms = []
+    low_risk_symptoms = []
+    
+    for symptom in symptoms:
+        severity = prediction_result.get('symptom_severity', {}).get(symptom, 0.1)
+        if severity > 0.7:
+            high_risk_symptoms.append(symptom)
+        elif severity > 0.4:
+            medium_risk_symptoms.append(symptom)
+        else:
+            low_risk_symptoms.append(symptom)
     
     report = f"""
-VETERINARY MEDICAL REPORT
-=========================
+╔══════════════════════════════════════════════════════════════════════╗
+║                    VETERINARY MEDICAL REPORT                         ║
+╚══════════════════════════════════════════════════════════════════════╝
 
-PATIENT INFORMATION:
--------------------
-Species: {animal_info['animal']}
-Breed: {animal_info['breed']}
-Age: {animal_info['age']}
-Weight: {animal_info['weight']} kg
+┌──────────────────────────────────────────────────────────────────────┐
+│ PATIENT INFORMATION                                                  │
+├──────────────────────────────────────────────────────────────────────┤
+│ Species:    {animal_info['animal']:<50} │
+│ Breed:      {animal_info['breed']:<50} │
+│ Age:        {animal_info['age']:<50} │
+│ Weight:     {animal_info['weight']} kg{'':<40} │
+└──────────────────────────────────────────────────────────────────────┘
 
-PRESENTING SYMPTOMS:
--------------------
-{chr(10).join(f"- {symptom}" for symptom in symptoms)}
+┌──────────────────────────────────────────────────────────────────────┐
+│ SYMPTOM ANALYSIS                                                    │
+├──────────────────────────────────────────────────────────────────────┤
+│ Total Symptoms: {len(symptoms):<45} │
+│ High Risk:      {len(high_risk_symptoms):<45} │
+│ Medium Risk:    {len(medium_risk_symptoms):<45} │
+│ Low Risk:       {len(low_risk_symptoms):<45} │
+└──────────────────────────────────────────────────────────────────────┘
 
-RISK ASSESSMENT:
----------------
-Overall Risk: {risk_level}
-Confidence: {confidence}
-Probability: {prediction_result['ensemble']['probability']:.1%}
+┌──────────────────────────────────────────────────────────────────────┐
+│ PRESENTING SYMPTOMS                                                 │
+├──────────────────────────────────────────────────────────────────────┤
+{'│ ' + ', '.join(symptoms) + ' ' * (70 - len(', '.join(symptoms))) + '│'}
+└──────────────────────────────────────────────────────────────────────┘
 
-SYMPTOM ANALYSIS:
-----------------
-Total Symptoms: {len(symptoms)}
-High-Risk Symptoms: {high_risk_count}
-Medium-Risk Symptoms: {medium_risk_count}
+┌──────────────────────────────────────────────────────────────────────┐
+│ RISK ASSESSMENT                                                     │
+├──────────────────────────────────────────────────────────────────────┤
+│ Level:       {risk_level:<47} │
+│ Confidence:  {confidence:<47} │
+│ Probability: {prediction_result['ensemble']['probability']:.1%}{'':<38} │
+└──────────────────────────────────────────────────────────────────────┘
 
+══════════════════════════════════════════════════════════════════════════
 CLINICAL ASSESSMENT:
--------------------
-Based on the symptom presentation and risk assessment, this case has been classified as {risk_level.lower()}. 
-The system indicates {confidence} confidence in this assessment.
+══════════════════════════════════════════════════════════════════════════
+Based on the symptom presentation and AI analysis, this case has been 
+classified as {risk_level.lower()}. The assessment indicates {confidence} 
+confidence in this evaluation.
 
+══════════════════════════════════════════════════════════════════════════
 KEY FINDINGS:
-------------
-- Multiple clinical symptoms requiring professional evaluation
-- {f"{high_risk_count} high-risk symptom(s) identified" if high_risk_count > 0 else "No immediate high-risk symptoms"}
-- Species-specific considerations for {animal_info['animal']}
-- Age factor: {animal_info['age']} patient
+══════════════════════════════════════════════════════════════════════════
+• {len(symptoms)} symptom(s) identified requiring professional evaluation
+• {f"{len(high_risk_symptoms)} high-risk symptom(s) present" if high_risk_symptoms else "No immediate high-risk symptoms"}
+• Species-specific considerations for {animal_info['animal']}
+• Age factor: {animal_info['age']} patient
 
+══════════════════════════════════════════════════════════════════════════
 RECOMMENDED ACTIONS:
--------------------
-{"🚨 IMMEDIATE EMERGENCY CARE REQUIRED:" if prediction_result['ensemble']['dangerous'] else "Recommended Steps:"}
-- {"Contact emergency veterinarian immediately" if prediction_result['ensemble']['dangerous'] else "Schedule veterinary consultation"}
-- Monitor vital signs (temperature, heart rate, respiration)
-- Ensure access to fresh water
-- Keep patient in quiet, comfortable environment
-- {"Prepare for emergency transport" if prediction_result['ensemble']['dangerous'] else "Monitor for changes in condition"}
+══════════════════════════════════════════════════════════════════════════
+{"• 🚨 CONTACT EMERGENCY VETERINARIAN IMMEDIATELY" if prediction_result['ensemble']['dangerous'] else "• Schedule veterinary consultation within 24-48 hours"}
+• Monitor vital signs (temperature, respiration, heart rate)
+• Ensure access to fresh water and comfortable environment
+• {"Prepare for emergency transport to veterinary facility" if prediction_result['ensemble']['dangerous'] else "Observe for any changes in condition"}
+• Document symptom progression and behavioral changes
 
-TREATMENT SUGGESTIONS:
----------------------
-- Complete physical examination by licensed veterinarian
-- Diagnostic tests as indicated by clinical presentation
-- Species-appropriate treatment protocols
-- Supportive care and monitoring
+══════════════════════════════════════════════════════════════════════════
+TREATMENT CONSIDERATIONS:
+══════════════════════════════════════════════════════════════════════════
+• Complete physical examination by licensed veterinarian
+• Diagnostic testing based on clinical presentation
+• Species-appropriate medical interventions
+• Supportive care and nutritional support
+• Pain management if indicated
 
+══════════════════════════════════════════════════════════════════════════
 FOLLOW-UP PLAN:
---------------
-- Re-evaluation within 24 hours
-- Daily monitoring of symptoms
-- Document any changes in condition
-- Follow veterinary discharge instructions
+══════════════════════════════════════════════════════════════════════════
+• Re-evaluation within 24 hours or as condition changes
+• Daily monitoring of symptoms and behavior
+• Maintain detailed health records
+• Follow veterinary discharge instructions precisely
+• Emergency contact information readily available
 
+══════════════════════════════════════════════════════════════════════════
 PROGNOSIS:
----------
-- Dependent on accurate diagnosis and treatment
-- Timely intervention improves outcomes
-- Follow professional veterinary guidance
+══════════════════════════════════════════════════════════════════════════
+• Outcome dependent on accurate diagnosis and timely intervention
+• Better prognosis with early veterinary care
+• Follow professional guidance for optimal recovery
+• Regular monitoring improves long-term outcomes
 
+══════════════════════════════════════════════════════════════════════════
 EMERGENCY PROTOCOL:
-------------------
-- Contact emergency services if condition worsens
-- Have veterinary clinic information readily available
-- Transport safely to veterinary facility
+══════════════════════════════════════════════════════════════════════════
+• Contact emergency veterinary services immediately if condition worsens
+• Have local emergency clinic information readily available
+• Transport patient safely to veterinary facility
+• Bring medical history and current medication information
 
+══════════════════════════════════════════════════════════════════════════
 DISCLAIMER:
-----------
-This report is generated by an AI system for informational purposes only.
-Always consult a licensed veterinarian for professional diagnosis and treatment.
+══════════════════════════════════════════════════════════════════════════
+This report is generated by an AI system for informational purposes only
+and should not replace professional veterinary diagnosis and treatment.
+Always consult a licensed veterinarian for medical advice.
+
+Report Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
     return report
 
