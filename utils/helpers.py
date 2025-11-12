@@ -1,113 +1,190 @@
+# utils/helpers.py
 import os
 import json
 from datetime import datetime
-import google.generativeai as genai
+import random
+
+# Import torch with proper error handling
+try:
+    import torch
+    from transformers import pipeline, set_seed, AutoTokenizer, AutoModelForCausalLM
+    TORCH_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: PyTorch/Transformers not available: {e}")
+    TORCH_AVAILABLE = False
+
 from src.config import Config
 
-def save_api_key(api_key, api_type='gemini'):
-    """Save API key to .env file"""
-    with open('.env', 'w') as f:
-        if api_type == 'gemini':
-            f.write(f'GEMINI_API_KEY={api_key}\n')
-    
-    # Update config
-    if api_type == 'gemini':
-        Config.GEMINI_API_KEY = api_key
-
-def generate_vet_report(prediction_result, animal_info, symptoms):
-    """Generate a veterinary report using Gemini AI"""
-    if not Config.GEMINI_API_KEY:
-        return "API key not configured. Please set up Gemini API key in settings."
-    
+# Initialize the text generation pipeline
+def get_report_generator():
+    """Get the local AI model for report generation"""
+    if not TORCH_AVAILABLE:
+        print("PyTorch not available - using fallback reports")
+        return None
+        
     try:
-        # Configure Gemini with correct model name
-        genai.configure(api_key=Config.GEMINI_API_KEY)
+        # Use a small, fast model for local generation
+        model_name = "distilgpt2"
         
-        # Use the free model - gemini-1.5-flash (free tier)
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-        except:
-            # Fallback to other free models
-            try:
-                model = genai.GenerativeModel('gemini-1.0-pro')
-            except:
-                return "Error: No available Gemini model found. Please check your API key and model availability."
+        # Load tokenizer and model separately for better control
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name)
         
-        prompt = f"""
-        Generate a comprehensive veterinary medical report and action plan based on the following assessment:
-
-        PATIENT INFORMATION:
-        - Species: {animal_info['animal']}
-        - Breed: {animal_info['breed']}
-        - Age: {animal_info['age']}
-        - Weight: {animal_info['weight']} kg
-
-        PRESENTING SYMPTOMS: {', '.join(symptoms)}
-
-        RISK ASSESSMENT:
-        - Overall Risk Level: {'HIGH - EMERGENCY' if prediction_result['ensemble']['dangerous'] else 'LOW - MONITOR'}
-        - Confidence Level: {prediction_result['ensemble']['confidence']}
-        - Risk Probability: {prediction_result['ensemble']['probability']:.1%}
-
-        Please provide a detailed veterinary report in the following structure:
-
-        ===== VETERINARY MEDICAL REPORT =====
-
-        CLINICAL ASSESSMENT:
-        [Provide overall clinical assessment based on symptoms and patient information]
-
-        DIFFERENTIAL DIAGNOSES:
-        [List possible conditions ranked by likelihood]
-
-        IMMEDIATE ACTIONS REQUIRED:
-        [Detailed step-by-step instructions on what to do immediately]
-
-        WHAT TO DO:
-        - [Specific actionable instructions]
-        - [Monitoring guidelines]
-        - [Home care instructions]
-        - [When to seek emergency care]
-
-        WHAT NOT TO DO:
-        - [Specific warnings and contraindications]
-        - [Medications to avoid]
-        - [Actions that could worsen condition]
-
-        DIAGNOSTIC RECOMMENDATIONS:
-        [Recommended tests and examinations]
-
-        TREATMENT CONSIDERATIONS:
-        [Potential treatment options]
-
-        PROGNOSIS:
-        [Expected outcome and recovery timeline]
-
-        FOLLOW-UP INSTRUCTIONS:
-        [Monitoring schedule and when to recheck]
-
-        EMERGENCY CONTACT PROTOCOL:
-        [When and how to contact emergency services]
-
-        Format this professionally as if from a licensed veterinary physician. Use clear sections and bullet points for readability.
-        Keep the response concise but comprehensive, focusing on actionable advice.
-        """
-
-        response = model.generate_content(prompt)
-        report = response.text
+        # Add padding token if it doesn't exist
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
         
-        # Save report to file
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_filename = f"reports/generated_reports/vet_report_{timestamp}.txt"
+        generator = pipeline(
+            'text-generation',
+            model=model,
+            tokenizer=tokenizer,
+            torch_dtype=torch.float32,
+            device=0 if torch.cuda.is_available() else -1  # Use GPU if available
+        )
+        return generator
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None
+
+def generate_vet_report_local(prediction_result, animal_info, symptoms):
+    """Generate a veterinary report using local AI model"""
+    try:
+        if not TORCH_AVAILABLE:
+            return generate_fallback_report(prediction_result, animal_info, symptoms)
+            
+        # Set seed for reproducibility
+        set_seed(42)
         
-        os.makedirs(os.path.dirname(report_filename), exist_ok=True)
+        # Get the generator
+        generator = get_report_generator()
+        if generator is None:
+            return generate_fallback_report(prediction_result, animal_info, symptoms)
         
-        with open(report_filename, 'w') as f:
-            f.write(report)
+        # Create prompt
+        prompt = create_report_prompt(prediction_result, animal_info, symptoms)
         
-        return report
+        # Generate report with fixed parameters to avoid warnings
+        generated_text = generator(
+            prompt,
+            max_new_tokens=350,  # Reduced for faster generation
+            num_return_sequences=1,
+            temperature=0.7,
+            do_sample=True,
+            pad_token_id=50256,
+            truncation=True,  # Explicitly enable truncation
+            no_repeat_ngram_size=2
+        )[0]['generated_text']
+        
+        # Extract the generated part (remove the prompt)
+        report = generated_text[len(prompt):].strip()
+        
+        # Format the report
+        formatted_report = format_generated_report(report)
+        
+        return formatted_report
         
     except Exception as e:
-        return f"Error generating report: {str(e)}"
+        print(f"Error generating report with AI: {e}")
+        return generate_fallback_report(prediction_result, animal_info, symptoms)
+
+def create_report_prompt(prediction_result, animal_info, symptoms):
+    """Create a detailed prompt for report generation"""
+    
+    risk_level = "HIGH - EMERGENCY" if prediction_result['ensemble']['dangerous'] else "LOW - MONITOR"
+    confidence = prediction_result['ensemble']['confidence']
+    probability = f"{prediction_result['ensemble']['probability']:.1%}"
+    
+    prompt = f"""
+Generate a veterinary medical report:
+
+PATIENT:
+- Species: {animal_info['animal']}
+- Breed: {animal_info['breed']}
+- Age: {animal_info['age']}
+- Weight: {animal_info['weight']} kg
+
+SYMPTOMS: {', '.join(symptoms)}
+
+RISK: {risk_level}
+CONFIDENCE: {confidence}
+PROBABILITY: {probability}
+
+VETERINARY REPORT:
+
+CLINICAL ASSESSMENT:
+"""
+    return prompt
+
+def format_generated_report(report):
+    """Format the generated report to ensure proper structure"""
+    # Ensure the report has basic sections
+    required_sections = [
+        "CLINICAL ASSESSMENT:",
+        "RECOMMENDATIONS:",
+        "IMMEDIATE ACTIONS:",
+        "FOLLOW-UP:"
+    ]
+    
+    formatted_report = report
+    
+    # Add missing sections if needed
+    for section in required_sections:
+        if section not in formatted_report:
+            formatted_report += f"\n\n{section}\n[Please consult a veterinarian for detailed guidance]"
+    
+    return formatted_report
+
+def generate_fallback_report(prediction_result, animal_info, symptoms):
+    """Generate a fallback report when AI generation fails"""
+    
+    risk_level = "HIGH - EMERGENCY" if prediction_result['ensemble']['dangerous'] else "LOW - MONITOR"
+    confidence = prediction_result['ensemble']['confidence']
+    
+    report = f"""
+===== VETERINARY MEDICAL REPORT =====
+
+CLINICAL ASSESSMENT:
+Based on the presented symptoms and patient information, this case has been assessed as {risk_level}. 
+The system indicates {confidence} confidence in this assessment.
+
+PRESENTING SYMPTOMS:
+{', '.join(symptoms)}
+
+IMMEDIATE ACTIONS REQUIRED:
+{"**🚨 URGENT VETERINARY ATTENTION REQUIRED** - Contact emergency veterinarian immediately" if prediction_result['ensemble']['dangerous'] else "Continue monitoring and schedule veterinary consultation"}
+
+RECOMMENDATIONS:
+- Monitor vital signs closely
+- Ensure access to fresh water
+- Keep animal in comfortable, quiet environment
+- Contact veterinarian if condition changes
+- Follow professional veterinary advice
+
+WHAT TO AVOID:
+- Do not administer medications without veterinary guidance
+- Do not attempt home treatments for serious symptoms
+- Avoid stressing the animal unnecessarily
+
+DIAGNOSTIC SUGGESTIONS:
+- Complete physical examination by licensed veterinarian
+- Blood work and laboratory tests as indicated
+- Diagnostic imaging if warranted
+
+FOLLOW-UP INSTRUCTIONS:
+- Schedule veterinary appointment
+- Monitor for any changes in condition
+- Maintain communication with veterinary team
+
+EMERGENCY PROTOCOL:
+- Contact emergency veterinary services for worsening condition
+- Have local emergency veterinary clinic information readily available
+
+=== IMPORTANT DISCLAIMER ===
+This report is generated by an AI system for informational purposes only.
+Always consult a licensed veterinarian for professional diagnosis and treatment.
+"""
+
+    return report
 
 def get_risk_color(probability):
     """Get color based on risk probability"""
@@ -146,19 +223,18 @@ def format_symptom_analysis(symptoms, predictor):
     
     return analysis
 
-def test_gemini_connection(api_key):
-    """Test if Gemini API is working"""
+def test_ai_connection():
+    """Test if local AI model is working"""
+    if not TORCH_AVAILABLE:
+        return False, "❌ PyTorch/Transformers not installed"
+    
     try:
-        genai.configure(api_key=api_key)
-        # Try the free model first
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content("Say 'Connection successful' in one word.")
-            return True, "✅ Gemini AI connection successful! (Using gemini-1.5-flash)"
-        except:
-            # Fallback to other model
-            model = genai.GenerativeModel('gemini-1.0-pro')
-            response = model.generate_content("Say 'Connection successful' in one word.")
-            return True, "✅ Gemini AI connection successful! (Using gemini-1.0-pro)"
+        generator = get_report_generator()
+        if generator is None:
+            return False, "❌ Local AI model failed to load"
+        
+        # Test with a short prompt
+        test_response = generator("Test", max_new_tokens=10, num_return_sequences=1, truncation=True)
+        return True, "✅ Local AI model loaded successfully!"
     except Exception as e:
-        return False, f"❌ Gemini AI connection failed: {str(e)}"
+        return False, f"❌ Local AI model error: {str(e)}"s

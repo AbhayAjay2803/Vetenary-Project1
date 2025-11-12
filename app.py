@@ -1,3 +1,4 @@
+# app.py - Complete corrected version
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -7,14 +8,37 @@ import os
 import sys
 import joblib
 from datetime import datetime
+import warnings
+import logging
+import time
+
+# ===== FIX FOR STREAMLIT WARNINGS =====
+warnings.filterwarnings("ignore", category=UserWarning, message=".*missing ScriptRunContext.*")
+warnings.filterwarnings("ignore", category=UserWarning, message=".*Thread.*MainThread.*")
+
+# Set environment variables to suppress development warnings
+os.environ['STREAMLIT_BARE_MODE'] = 'true'
+os.environ['STREAMLIT_LOGGING_LEVEL'] = 'error'
+
+# Configure logging
+logging.getLogger('streamlit.runtime.scriptrunner').setLevel(logging.ERROR)
+logging.getLogger('streamlit.runtime.scriptrunner.script_run_context').setLevel(logging.ERROR)
+# ======================================
 
 # Add src to path
 sys.path.append('src')
 sys.path.append('utils')
 
-from src.predictor import VeterinaryPredictor
-from src.config import Config
-from utils.helpers import save_api_key, generate_vet_report, get_risk_color, format_symptom_analysis, test_gemini_connection
+# Import torch here to make it available globally
+import torch
+
+try:
+    from src.predictor import VeterinaryPredictor
+    from src.config import Config
+    from utils.helpers import generate_vet_report_local, get_risk_color, format_symptom_analysis, test_ai_connection
+except ImportError as e:
+    st.error(f"Import error: {e}. Please check your module structure.")
+    st.stop()
 
 # Page configuration
 st.set_page_config(
@@ -102,6 +126,34 @@ st.markdown("""
         text-align: center;
         margin: 20px 0;
     }
+    .blink {
+        animation: blink 1s infinite;
+    }
+    @keyframes blink {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    .available-models {
+        background-color: #f0f8ff;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 5px 0;
+        font-size: 0.9em;
+    }
+    .download-btn {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 5px;
+        border: none;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -109,7 +161,9 @@ class VeterinaryApp:
     def __init__(self):
         self.predictor = VeterinaryPredictor()
         self.models_loaded = False
+        self.ai_model_loaded = False
         self.load_models()
+        self.check_ai_model()
 
     def load_models(self):
         """Load trained models"""
@@ -126,49 +180,49 @@ class VeterinaryApp:
         all_exist = all(os.path.exists(path) for path in model_paths.values())
         
         if all_exist:
-            self.models_loaded = self.predictor.load_models(model_paths)
+            try:
+                self.models_loaded = self.predictor.load_models(model_paths)
+                if self.models_loaded:
+                    st.sidebar.success("✅ Health assessment models loaded!")
+                else:
+                    st.sidebar.error("❌ Failed to load health assessment models")
+            except Exception as e:
+                st.sidebar.error(f"❌ Error loading models: {e}")
+                self.models_loaded = False
         else:
-            st.warning("⚠️ Model files not found. Please ensure all model files are in the 'models' directory.")
+            missing_models = [path for path in model_paths.values() if not os.path.exists(path)]
+            st.sidebar.warning(f"⚠️ Model files not found: {missing_models}")
+
+    def check_ai_model(self):
+        """Check if local AI model is available"""
+        try:
+            success, message = test_ai_connection()
+            self.ai_model_loaded = success
+            if success:
+                st.sidebar.success("✅ Local AI Model Ready")
+            else:
+                st.sidebar.warning("⚠️ Local AI model not available - using fallback reports")
+        except Exception as e:
+            st.sidebar.warning(f"⚠️ AI model check failed: {e}")
+            self.ai_model_loaded = False
 
     def render_sidebar(self):
         """Render sidebar with configuration and information"""
         st.sidebar.title("⚙️ Configuration")
         
-        # API Key Configuration
-        st.sidebar.subheader("🔑 Gemini AI Configuration")
-        api_key = st.sidebar.text_input("Gemini API Key", type="password", 
-                                       value=Config.GEMINI_API_KEY,
-                                       help="Enter your Gemini API key for AI-generated reports")
-        api_type = st.sidebar.selectbox("AI Service", ["Gemini AI"])
-        
-        col1, col2 = st.sidebar.columns(2)
-        with col1:
-            if st.button("Save API Key"):
-                if api_key:
-                    save_api_key(api_key, 'gemini')
-                    st.sidebar.success("✅ API key saved successfully!")
-                else:
-                    st.sidebar.error("❌ Please enter a valid API key")
-        
-        with col2:
-            if st.button("Test Connection"):
-                if api_key:
-                    success, message = test_gemini_connection(api_key)
-                    if success:
-                        st.sidebar.success(message)
-                    else:
-                        st.sidebar.error(message)
-                else:
-                    st.sidebar.error("❌ Please enter API key first")
-        
-        # Show current API status
-        if Config.GEMINI_API_KEY:
-            st.sidebar.success("✅ Gemini API Configured")
+        # AI Model Status
+        st.sidebar.subheader("🤖 Local AI Model")
+        if self.ai_model_loaded:
+            st.sidebar.success("✅ Local AI Model Ready")
+            st.sidebar.write("**Model:** DistilGPT-2")
+            st.sidebar.write("**Type:** Text Generation")
+            st.sidebar.write("**Hardware:** " + ("GPU" if torch.cuda.is_available() else "CPU"))
         else:
-            st.sidebar.warning("⚠️ Gemini API Not Configured")
+            st.sidebar.warning("⚠️ Using Fallback Reports")
+            st.sidebar.write("AI reports will use template-based generation")
         
         # Model Information
-        st.sidebar.subheader("🤖 Model Information")
+        st.sidebar.subheader("🎯 Health Assessment Models")
         if self.models_loaded:
             st.sidebar.success("✅ Models loaded successfully!")
             st.sidebar.write(f"**Available Models:** {len(self.predictor.models)}")
@@ -392,70 +446,77 @@ class VeterinaryApp:
         st.markdown("---")
         st.subheader("🏥 AI-Powered Veterinary Report")
         
-        if not Config.GEMINI_API_KEY:
-            st.warning("⚠️ Gemini API key not configured. Please enter your API key in the sidebar to generate AI reports.")
-        else:
-            # Check if we're currently generating a report
-            if 'generating_report' not in st.session_state:
-                st.session_state.generating_report = False
-            
+        # Initialize session state for report generation
+        if 'report_generated' not in st.session_state:
+            st.session_state.report_generated = False
+        if 'generated_report' not in st.session_state:
+            st.session_state.generated_report = None
+        if 'generating_report' not in st.session_state:
+            st.session_state.generating_report = False
+        
+        # Generate Report Button
+        if not st.session_state.generating_report and not st.session_state.report_generated:
             if st.button("🧠 Generate AI Veterinary Report", type="primary", use_container_width=True):
                 st.session_state.generating_report = True
                 st.session_state.report_generated = False
-            
-            # Show AI thinking indicator if generating
-            if st.session_state.get('generating_report', False):
-                st.markdown("""
-                <div class="ai-thinking">
-                    <h3>🧠 Gemini AI is analyzing...</h3>
-                    <p>Generating comprehensive veterinary report with actionable advice...</p>
-                    <p><em>This may take a few moments</em></p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Generate the report
-                with st.spinner("Gemini AI is analyzing the case and generating comprehensive report..."):
-                    report = generate_vet_report(prediction_result, animal_info, symptoms)
-                    
-                    if report.startswith("Error"):
-                        st.error(f"❌ {report}")
-                    else:
-                        # Store report in session state
-                        st.session_state.generated_report = report
-                        st.session_state.report_animal_info = animal_info
-                        st.session_state.report_generated = True
-                        st.success("✅ AI Report Generated Successfully!")
-                
-                st.session_state.generating_report = False
                 st.rerun()
+        
+        # Show AI Thinking Indicator
+        if st.session_state.generating_report:
+            st.markdown("""
+            <div class="ai-thinking">
+                <h3 class="blink">🧠 Local AI is analyzing...</h3>
+                <p>Generating comprehensive veterinary report with actionable advice...</p>
+                <p><em>This may take 10-30 seconds</em></p>
+            </div>
+            """, unsafe_allow_html=True)
             
-            # Display report if available
-            if st.session_state.get('report_generated', False) and 'generated_report' in st.session_state:
-                st.markdown("### 📋 Detailed Veterinary Report")
+            # Generate the report
+            try:
+                # Add a small delay to show the thinking message
+                time.sleep(2)
                 
-                # Report display with download option
-                report_col1, report_col2 = st.columns([3, 1])
+                report = generate_vet_report_local(prediction_result, animal_info, symptoms)
                 
-                with report_col1:
-                    st.text_area("Report Content", st.session_state.generated_report, height=400, key="report_display")
+                # Store report in session state
+                st.session_state.generated_report = report
+                st.session_state.report_animal_info = animal_info
+                st.session_state.report_generated = True
+                st.session_state.generating_report = False
+                st.success("✅ AI Report Generated Successfully!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error generating report: {str(e)}")
+                st.session_state.generating_report = False
+        
+        # Display report if available
+        if st.session_state.report_generated and st.session_state.generated_report:
+            st.markdown("### 📋 Detailed Veterinary Report")
+            
+            # Report display with download option
+            report_col1, report_col2 = st.columns([3, 1])
+            
+            with report_col1:
+                st.text_area("Report Content", st.session_state.generated_report, height=400, key="report_display")
+            
+            with report_col2:
+                # Download button
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"vet_report_{animal_info['animal']}_{timestamp}.txt"
                 
-                with report_col2:
-                    # Download button
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    filename = f"vet_report_{animal_info['animal']}_{timestamp}.txt"
-                    
-                    st.download_button(
-                        label="📥 Download Report",
-                        data=st.session_state.generated_report,
-                        file_name=filename,
-                        mime="text/plain",
-                        use_container_width=True
-                    )
-                    
-                    if st.button("🗑️ Clear Report", use_container_width=True):
-                        del st.session_state.generated_report
-                        del st.session_state.report_generated
-                        st.rerun()
+                st.download_button(
+                    label="📥 Download Report",
+                    data=st.session_state.generated_report,
+                    file_name=filename,
+                    mime="text/plain",
+                    use_container_width=True
+                )
+                
+                if st.button("🗑️ Clear Report", use_container_width=True):
+                    st.session_state.report_generated = False
+                    st.session_state.generated_report = None
+                    st.session_state.generating_report = False
+                    st.rerun()
         
         # Recommendations
         st.markdown("---")
@@ -572,7 +633,7 @@ class VeterinaryApp:
         # Header
         st.markdown('<h1 class="main-header">🐾 Veterinary Health Assessment System</h1>', 
                    unsafe_allow_html=True)
-        st.markdown("### *AI-Powered Animal Health Risk Assessment Using Ensemble Machine Learning & Gemini AI*")
+        st.markdown("### *AI-Powered Animal Health Risk Assessment Using Ensemble Machine Learning & Local AI*")
         
         # Sidebar
         self.render_sidebar()
@@ -601,6 +662,14 @@ class VeterinaryApp:
                 
                 # Assessment button
                 if st.button("🔍 Assess Health Status", type="primary", use_container_width=True):
+                    # Clear previous reports when new assessment starts
+                    if 'report_generated' in st.session_state:
+                        st.session_state.report_generated = False
+                    if 'generated_report' in st.session_state:
+                        st.session_state.generated_report = None
+                    if 'generating_report' in st.session_state:
+                        st.session_state.generating_report = False
+                    
                     if not animal_info['symptoms']:
                         st.warning("⚠️ Please select at least one symptom")
                     else:
@@ -613,7 +682,22 @@ class VeterinaryApp:
                                 animal_info['symptoms']
                             )
                         
-                        self.render_prediction_results(prediction_result, animal_info, animal_info['symptoms'])
+                        # Store prediction in session state
+                        st.session_state.prediction_result = prediction_result
+                        st.session_state.animal_info = animal_info
+                        st.rerun()
+                
+                # Display results if available
+                if 'prediction_result' in st.session_state and st.session_state.animal_info is not None:
+                    self.render_prediction_results(
+                        st.session_state.prediction_result,
+                        st.session_state.animal_info,
+                        st.session_state.animal_info['symptoms']
+                    )
+                elif 'prediction_result' in st.session_state:
+                    st.error("❌ Animal information is missing. Please perform a new assessment.")
+                    # Clear the problematic state
+                    st.session_state.prediction_result = None
         
         with tab2:
             self.render_model_comparison()
@@ -624,7 +708,7 @@ class VeterinaryApp:
             <div class="report-section">
             ## Veterinary Health Assessment System
             
-            This advanced AI-powered system uses ensemble machine learning combined with Gemini AI 
+            This advanced AI-powered system uses ensemble machine learning combined with local AI 
             to assess animal health risks based on symptoms and patient information.
             
             ### 🏆 Best Performing Model
@@ -644,10 +728,11 @@ class VeterinaryApp:
             - **Random Forest** (8% weight): Ensemble decision trees
             - **Neural Network** (7% weight): Multi-layer perceptron
             
-            ### 🧠 Gemini AI Integration
-            - **Free Tier**: Uses Gemini 1.5 Flash (free version)
-            - **Comprehensive Reports**: Detailed veterinary guidance with "What to Do" and "What Not to Do"
-            - **Professional Format**: Structured medical reports
+            ### 🧠 Local AI Integration
+            - **Model**: DistilGPT-2 (Open Source)
+            - **No API Required**: Runs completely locally
+            - **Privacy**: Your data never leaves your system
+            - **Comprehensive Reports**: Detailed veterinary guidance
             - **Downloadable**: Save reports for veterinary consultation
             - **Real-time Analysis**: Instant AI-powered insights
             
@@ -656,23 +741,32 @@ class VeterinaryApp:
             Always consult a licensed veterinarian for accurate diagnosis and treatment.
             
             ### 🛠️ Technical Details
-            - **Framework**: PyTorch, Scikit-learn, XGBoost
+            - **Framework**: PyTorch, Scikit-learn, XGBoost, Transformers
+            - **AI Model**: DistilGPT-2 for local report generation
             - **Interface**: Streamlit
-            - **AI Integration**: Google Gemini AI (Free Tier) for report generation
             - **Dataset**: 25,000 synthetic veterinary cases
-            - **Deployment**: Ready for production deployment
+            - **Deployment**: Runs completely offline
             </div>
             """, unsafe_allow_html=True)
 
 def main():
     # Initialize session state variables
-    if 'generating_report' not in st.session_state:
-        st.session_state.generating_report = False
+    if 'prediction_result' not in st.session_state:
+        st.session_state.prediction_result = None
+    if 'animal_info' not in st.session_state:
+        st.session_state.animal_info = None
     if 'report_generated' not in st.session_state:
         st.session_state.report_generated = False
+    if 'generated_report' not in st.session_state:
+        st.session_state.generated_report = None
+    if 'generating_report' not in st.session_state:
+        st.session_state.generating_report = False
     
-    app = VeterinaryApp()
-    app.run()
+    try:
+        app = VeterinaryApp()
+        app.run()
+    except Exception as e:
+        st.error(f"Application error: {e}")
 
 if __name__ == "__main__":
     main()
