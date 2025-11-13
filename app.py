@@ -1,4 +1,4 @@
-# app.py - Enhanced with better visibility and symptom display
+# app.py - Enhanced with supremacy rule display
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -51,10 +51,38 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Enhanced CSS with better visibility and symptom display
+# Enhanced CSS with supremacy rule styling
 st.markdown("""
 <style>
-    /* Main background and text */
+    /* Supremacy rule styling */
+    .supremacy-triggered {
+        background: linear-gradient(135deg, #ff0000, #cc0000) !important;
+        padding: 25px;
+        border-radius: 20px;
+        margin: 20px 0;
+        color: white !important;
+        border: 5px solid #ff6b6b;
+        box-shadow: 0 8px 35px rgba(255, 0, 0, 0.6);
+        text-align: center;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); box-shadow: 0 8px 35px rgba(255, 0, 0, 0.6); }
+        50% { transform: scale(1.02); box-shadow: 0 12px 45px rgba(255, 0, 0, 0.8); }
+        100% { transform: scale(1); box-shadow: 0 8px 35px rgba(255, 0, 0, 0.6); }
+    }
+    
+    .supremacy-warning {
+        background: linear-gradient(135deg, #ff9800, #f57c00);
+        padding: 20px;
+        border-radius: 15px;
+        margin: 15px 0;
+        color: white !important;
+        border-left: 8px solid #e65100;
+        box-shadow: 0 6px 25px rgba(255, 152, 0, 0.4);
+    }
+    
+    /* Rest of the CSS remains the same as before */
     .main {
         background-color: #f8f9fa;
     }
@@ -67,7 +95,6 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
-    /* Enhanced Headers with better visibility */
     .main-header {
         font-size: 3.2rem;
         color: #2c3e50;
@@ -80,7 +107,6 @@ st.markdown("""
         text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
     
-    /* Section headers with enhanced visibility */
     h1, h2, h3 {
         color: #2c3e50 !important;
         border-bottom: 3px solid #3498db;
@@ -90,7 +116,6 @@ st.markdown("""
         text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
     }
     
-    /* Risk level cards with enhanced visibility */
     .risk-high {
         background: linear-gradient(135deg, #ff6b6b, #ee5a52);
         padding: 25px;
@@ -122,7 +147,6 @@ st.markdown("""
         text-align: center;
     }
     
-    /* Enhanced symptom items with better visibility */
     .symptom-item {
         padding: 15px;
         margin: 8px 0;
@@ -156,7 +180,6 @@ st.markdown("""
         border: 2px solid #c8e6c9;
     }
     
-    /* Enhanced model cards */
     .model-card {
         background: linear-gradient(135deg, #ffffff, #f8f9fa);
         padding: 20px;
@@ -172,7 +195,6 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     }
     
-    /* Confidence text with enhanced visibility */
     .confidence-text {
         color: #2c3e50 !important;
         font-weight: bold;
@@ -184,7 +206,6 @@ st.markdown("""
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     
-    /* Enhanced report sections */
     .report-section {
         background: linear-gradient(135deg, #ffffff, #f8f9fa);
         padding: 30px;
@@ -195,7 +216,6 @@ st.markdown("""
         color: #2c3e50 !important;
     }
     
-    /* AI Thinking section with better visibility */
     .ai-thinking {
         background: linear-gradient(135deg, #e3f2fd, #bbdefb);
         padding: 35px;
@@ -215,7 +235,6 @@ st.markdown("""
         100% { opacity: 1; transform: scale(1); }
     }
     
-    /* Enhanced buttons */
     .stButton button {
         background: linear-gradient(135deg, #3498db, #2980b9) !important;
         color: white !important;
@@ -232,7 +251,6 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(52, 152, 219, 0.5) !important;
     }
     
-    /* Enhanced metrics */
     .stMetric {
         background: linear-gradient(135deg, #ffffff, #f8f9fa) !important;
         padding: 20px !important;
@@ -242,7 +260,6 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
     }
     
-    /* Better text area for reports */
     .stTextArea textarea {
         background-color: #f8f9fa !important;
         color: #2c3e50 !important;
@@ -255,14 +272,12 @@ st.markdown("""
         box-shadow: inset 0 2px 5px rgba(0,0,0,0.1) !important;
     }
     
-    /* Enhanced input fields */
     .stSelectbox, .stNumberInput, .stMultiselect {
         background-color: #ffffff !important;
         border-radius: 10px !important;
         border: 2px solid #bdc3c7 !important;
     }
     
-    /* Success/Error/Warning messages with better visibility */
     .stSuccess {
         background: linear-gradient(135deg, #d4edda, #c3e6cb) !important;
         border: 2px solid #c3e6cb !important;
@@ -288,7 +303,6 @@ st.markdown("""
         font-weight: 600 !important;
     }
     
-    /* Symptom summary section */
     .symptom-summary {
         background: linear-gradient(135deg, #ffffff, #f8f9fa);
         padding: 25px;
@@ -376,6 +390,18 @@ class VeterinaryApp:
         else:
             st.sidebar.error("❌ **Models Inactive**")
         
+        # Supremacy Rules Info
+        st.sidebar.markdown("### 🚨 Fail-Safe Rules")
+        st.sidebar.info("""
+        **Supremacy Rules Active:**
+        
+        🚑 **Symptom Rule:** Any HIGH-RISK symptom → EMERGENCY
+        
+        🤖 **Model Rule:** 3+ models vote DANGEROUS → EMERGENCY
+        
+        **Safety First:** These rules override normal scoring to ensure patient safety.
+        """)
+        
         # Quick Tips
         st.sidebar.markdown("### 💡 Quick Guide")
         st.sidebar.info("""
@@ -461,16 +487,26 @@ class VeterinaryApp:
         }
 
     def render_prediction_results(self, prediction_result, animal_info, symptoms):
-        """Render prediction results with enhanced visibility"""
+        """Render prediction results with SUPREMACY RULE display"""
         if not isinstance(prediction_result, dict) or 'ensemble' not in prediction_result:
             st.error(f"Prediction error: {prediction_result}")
             return
         
         ensemble = prediction_result['ensemble']
         
-        # Risk Level Display with enhanced visibility
+        # Check if supremacy rule was triggered
+        supremacy_triggered = ensemble.get('supremacy_triggered', False)
+        supremacy_reason = ensemble.get('supremacy_reason', '')
+        
+        # Risk Level Display with SUPREMACY override
         risk_score = ensemble['probability']
-        if risk_score < 0.3:
+        
+        # If supremacy triggered, force HIGH RISK display
+        if supremacy_triggered:
+            risk_class = "supremacy-triggered"
+            risk_level = "🚨 EMERGENCY - SUPREMACY RULE TRIGGERED"
+            risk_icon = "🚑"
+        elif risk_score < 0.3:
             risk_class = "risk-low"
             risk_level = "LOW RISK"
             risk_icon = "🟢"
@@ -483,6 +519,17 @@ class VeterinaryApp:
             risk_level = "HIGH RISK"
             risk_icon = "🔴"
         
+        # Display supremacy warning if triggered
+        if supremacy_triggered:
+            st.markdown(f"""
+            <div class="supremacy-warning">
+                <h2>🚨 FAIL-SAFE SUPREMACY RULE ACTIVATED</h2>
+                <p style='font-size: 1.2em;'><strong>Reason:</strong> {supremacy_reason}</p>
+                <p style='font-size: 1.1em;'>Normal scoring overridden for patient safety. Immediate veterinary attention required.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Main risk display
         st.markdown(f"""
         <div class="{risk_class}">
             <h1 style='color: inherit; margin: 0; font-size: 2.5em;'>{risk_icon} {risk_level}</h1>
@@ -490,6 +537,7 @@ class VeterinaryApp:
             <strong>Confidence Level:</strong> <span class="confidence-text">{ensemble['confidence']}</span><br>
             <strong>Model Agreement:</strong> {ensemble['model_agreement']}<br>
             <strong>Risk Probability:</strong> {risk_score:.1%}</p>
+            {f"<p style='color: inherit; margin: 10px 0 0 0; font-size: 1.1em;'><strong>Supremacy Rule:</strong> {supremacy_reason}</p>" if supremacy_triggered else ""}
         </div>
         """, unsafe_allow_html=True)
         
@@ -499,6 +547,13 @@ class VeterinaryApp:
         with col1:
             # Individual Model Predictions
             st.markdown("### 🤖 Model Assessments")
+            dangerous_count = ensemble.get('dangerous_votes', 0)
+            total_models = ensemble.get('total_models', 5)
+            
+            st.markdown(f"**Model Consensus:** {dangerous_count}/{total_models} models vote DANGEROUS")
+            if dangerous_count >= 3:
+                st.warning("🚨 **Model Supremacy:** Majority vote triggers emergency protocol")
+            
             for model_name, prediction in prediction_result['individual_predictions'].items():
                 status_icon = "🔴" if prediction['dangerous'] else "🟢"
                 status_text = "DANGEROUS" if prediction['dangerous'] else "SAFE"
@@ -515,9 +570,13 @@ class VeterinaryApp:
         with col2:
             # Risk Visualization
             st.markdown("### 📊 Risk Assessment Gauge")
+            
+            # Adjust gauge value if supremacy triggered
+            display_value = min(risk_score * 100, 95) if supremacy_triggered else risk_score * 100
+            
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number+delta",
-                value = risk_score * 100,
+                value = display_value,
                 domain = {'x': [0, 1], 'y': [0, 1]},
                 title = {'text': "Risk Score", 'font': {'size': 28, 'color': '#2c3e50', 'family': 'Arial'}},
                 delta = {'reference': 50},
@@ -539,6 +598,16 @@ class VeterinaryApp:
                     }
                 }
             ))
+            
+            if supremacy_triggered:
+                fig.add_annotation(
+                    text="🚨 SUPREMACY RULE ACTIVE",
+                    x=0.5, y=0.2,
+                    xref="paper", yref="paper",
+                    showarrow=False,
+                    font=dict(size=16, color="red")
+                )
+            
             fig.update_layout(
                 height=350, 
                 font={'color': "#2c3e50", 'family': "Arial", 'size': 16},
@@ -548,10 +617,11 @@ class VeterinaryApp:
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # Enhanced Symptom Summary
+            # Enhanced Symptom Summary with supremacy highlights
             if symptoms:
                 st.markdown("### 🔍 Symptom Summary")
-                high_risk_count = sum(1 for s in symptoms if self.predictor.data_loader.symptom_severity_weights.get(s, 0) > 0.7)
+                high_risk_symptoms = ensemble.get('high_risk_symptoms', [])
+                high_risk_count = len(high_risk_symptoms)
                 medium_risk_count = sum(1 for s in symptoms if 0.4 < self.predictor.data_loader.symptom_severity_weights.get(s, 0) <= 0.7)
                 low_risk_count = len(symptoms) - high_risk_count - medium_risk_count
                 
@@ -559,9 +629,17 @@ class VeterinaryApp:
                 with col1:
                     st.metric("Total Symptoms", len(symptoms), delta=None)
                 with col2:
-                    st.metric("High-Risk", high_risk_count, delta=f"{high_risk_count} urgent" if high_risk_count > 0 else "None")
+                    delta_high = f"{high_risk_count} URGENT" if high_risk_count > 0 else "None"
+                    if high_risk_count > 0:
+                        st.metric("High-Risk", high_risk_count, delta=delta_high, delta_color="inverse")
+                    else:
+                        st.metric("High-Risk", high_risk_count, delta=delta_high)
                 with col3:
                     st.metric("Medium-Risk", medium_risk_count, delta=f"{medium_risk_count} concerning" if medium_risk_count > 0 else "None")
+                
+                # Display high-risk symptoms if any
+                if high_risk_symptoms:
+                    st.error(f"🚨 **High-Risk Symptoms Detected:** {', '.join(high_risk_symptoms)}")
         
         # AI Generated Report Section
         st.markdown("---")
@@ -648,10 +726,35 @@ class VeterinaryApp:
                     st.session_state.generating_report = False
                     st.rerun()
         
-        # Enhanced Recommendations
+        # Enhanced Recommendations with supremacy considerations
         st.markdown("---")
         st.markdown("### 💡 Clinical Recommendations")
-        if ensemble['dangerous']:
+        
+        if supremacy_triggered:
+            st.error(f"""
+            ## 🚨 EMERGENCY - SUPREMACY RULE ACTIVATED
+            
+            **CRITICAL CLINICAL ACTIONS REQUIRED:**
+            
+            🏥 **IMMEDIATE EMERGENCY VETERINARY CARE NEEDED**
+            📞 **CONTACT EMERGENCY VETERINARIAN NOW**
+            ⚠️ **DO NOT DELAY - CONDITION REQUIRES URGENT ATTENTION**
+            
+            **Supremacy Trigger Reason:** {supremacy_reason}
+            
+            **Emergency Protocol:**
+            - 🚑 **Transport to emergency veterinary clinic immediately**
+            - 📞 **Call ahead to alert emergency staff**
+            - 🏥 **Prepare for emergency medical intervention**
+            - ⚠️ **Do not attempt home treatment**
+            - 📋 **Bring all medical history and current medications**
+            
+            **Critical Time Factors:**
+            - Every minute counts in emergency situations
+            - Professional medical intervention is essential
+            - Follow emergency veterinary guidance precisely
+            """)
+        elif ensemble['dangerous']:
             st.error("""
             ## 🚨 URGENT VETERINARY ATTENTION REQUIRED
             
@@ -693,6 +796,7 @@ class VeterinaryApp:
         <div style='text-align: center; padding: 3rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; margin-bottom: 2rem; box-shadow: 0 8px 32px rgba(0,0,0,0.2);'>
             <h1 class="main-header">🐾 Veterinary Health Assessment System</h1>
             <h3 style='color: white; margin: 1rem 0 0 0; font-size: 1.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);'>Professional AI-Powered Animal Health Risk Assessment</h3>
+            <p style='color: white; margin: 0.5rem 0 0 0; font-size: 1.1em;'>🚨 <strong>Fail-Safe Supremacy Rules Active</strong> - Ensuring Patient Safety First</p>
         </div>
         """, unsafe_allow_html=True)
         

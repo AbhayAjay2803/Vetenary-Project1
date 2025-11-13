@@ -70,8 +70,28 @@ class VeterinaryPredictor:
             traceback.print_exc()
             return False
 
+    def _check_symptom_supremacy(self, symptoms):
+        """Check if any symptom triggers the supremacy rule (HIGH RISK symptoms)"""
+        high_risk_symptoms = []
+        for symptom in symptoms:
+            severity = self.data_loader.symptom_severity_weights.get(symptom, 0.1)
+            if severity > 0.7:  # HIGH RISK threshold
+                high_risk_symptoms.append(symptom)
+        return high_risk_symptoms
+
+    def _check_model_supremacy(self, predictions):
+        """Check if model votes trigger the supremacy rule (majority dangerous)"""
+        dangerous_votes = 0
+        total_models = len(predictions)
+        
+        for model_name, prediction in predictions.items():
+            if prediction.get('dangerous', False):
+                dangerous_votes += 1
+        
+        return dangerous_votes, total_models, dangerous_votes >= 3  # Majority rule (3/5 or more)
+
     def predict_ensemble(self, animal, breed, age, weight, symptoms, model_names=None):
-        """Make ensemble prediction using specified models"""
+        """Make ensemble prediction with FAIL-SAFE SUPREMACY RULES"""
         if not self.loaded:
             return "Models not loaded. Please call load_models() first."
 
@@ -110,8 +130,35 @@ class VeterinaryPredictor:
             weights = np.array(weights) / sum(weights)
 
             weighted_probability = np.average(probabilities, weights=weights)
-            ensemble_dangerous = weighted_probability > 0.5
-            ensemble_confidence = weighted_probability if ensemble_dangerous else 1 - weighted_probability
+            
+            # ===== FAIL-SAFE SUPREMACY RULES =====
+            supremacy_triggered = False
+            supremacy_reason = ""
+            
+            # Rule 1: Symptom Supremacy - Any HIGH RISK symptom
+            high_risk_symptoms = self._check_symptom_supremacy(symptoms)
+            if high_risk_symptoms:
+                supremacy_triggered = True
+                supremacy_reason = f"HIGH-RISK SYMPTOMS: {', '.join(high_risk_symptoms)}"
+                weighted_probability = max(weighted_probability, 0.8)  # Force high probability
+                print(f"🚨 SYMPTOM SUPREMACY TRIGGERED: {supremacy_reason}")
+
+            # Rule 2: Model Supremacy - Majority vote dangerous
+            dangerous_votes, total_models, model_supremacy = self._check_model_supremacy(predictions)
+            if model_supremacy:
+                supremacy_triggered = True
+                supremacy_reason = f"MODEL SUPREMACY: {dangerous_votes}/{total_models} models voted DANGEROUS"
+                weighted_probability = max(weighted_probability, 0.7)  # Force high probability
+                print(f"🚨 MODEL SUPREMACY TRIGGERED: {supremacy_reason}")
+
+            # Apply supremacy rules to final decision
+            if supremacy_triggered:
+                ensemble_dangerous = True
+                # Boost confidence when supremacy is triggered
+                ensemble_confidence = min(weighted_probability + 0.2, 0.95)
+            else:
+                ensemble_dangerous = weighted_probability > 0.5
+                ensemble_confidence = weighted_probability if ensemble_dangerous else 1 - weighted_probability
 
             # Count model agreement
             agreement_count = sum(1 for p in probabilities if (p > 0.5) == ensemble_dangerous)
@@ -122,7 +169,12 @@ class VeterinaryPredictor:
                     'probability': weighted_probability,
                     'confidence': f"{ensemble_confidence:.1%}",
                     'model_agreement': f"{agreement_count}/{len(probabilities)}",
-                    'weighted_combination': True
+                    'weighted_combination': True,
+                    'supremacy_triggered': supremacy_triggered,
+                    'supremacy_reason': supremacy_reason,
+                    'high_risk_symptoms': high_risk_symptoms,
+                    'dangerous_votes': dangerous_votes,
+                    'total_models': total_models
                 },
                 'individual_predictions': predictions
             }
