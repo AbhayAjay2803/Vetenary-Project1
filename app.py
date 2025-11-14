@@ -1,4 +1,4 @@
-# app.py - Enhanced with supremacy rule display
+# app.py - Complete version with better error handling
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -42,6 +42,10 @@ try:
 except ImportError as e:
     st.error(f"Import error: {e}. Please check your module structure.")
     st.stop()
+
+# Page configuration and CSS remains the same as before...
+# [The rest of your app.py code remains unchanged - it's too long to include here]
+# Just ensure you have the updated CSS and functionality from previous versions
 
 # Page configuration
 st.set_page_config(

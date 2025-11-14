@@ -174,7 +174,8 @@ class VeterinaryPredictor:
                     'supremacy_reason': supremacy_reason,
                     'high_risk_symptoms': high_risk_symptoms,
                     'dangerous_votes': dangerous_votes,
-                    'total_models': total_models
+                    'total_models': total_models,
+                    'symptom_severity_weights': self.data_loader.symptom_severity_weights  # Pass severity data for report
                 },
                 'individual_predictions': predictions
             }
