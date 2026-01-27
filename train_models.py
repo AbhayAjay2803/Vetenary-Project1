@@ -163,10 +163,10 @@ def main():
     torch.manual_seed(42)
     np.random.seed(42)
     
-    # Step 1: Load and preprocess data
+    # In the main() function of train_models.py, change the dataset creation:
     print("\n[STEP 1] Loading and preprocessing veterinary dataset...")
     data_loader = VeterinaryDatasetLoader()
-    df = data_loader.create_comprehensive_dataset(n_samples=25000)  # CHANGED: 25,000 samples
+    df = data_loader.create_comprehensive_dataset(n_samples=30000)  # Increased to 30,000 samples
     processed_df = data_loader.preprocess_data(df)
     
     # Step 2: Prepare features

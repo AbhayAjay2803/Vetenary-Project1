@@ -118,13 +118,15 @@ class VeterinaryPredictor:
             for model_name, pred in predictions.items():
                 probabilities.append(pred['probability'])
                 if model_name == 'SCT':
-                    weights.append(0.4)  # Highest weight for SCT
+                    weights.append(0.35)  # Reduced from 0.4
                 elif model_name == 'LSTM':
                     weights.append(0.25)
                 elif model_name == 'XGBoost':
-                    weights.append(0.2)
+                    weights.append(0.25)  # Increased from 0.2
+                elif model_name == 'RandomForest':
+                    weights.append(0.10)  # Reduced from 0.15
                 else:
-                    weights.append(0.15)
+                    weights.append(0.05)  # Reduced from 0.15
 
             # Normalize weights
             weights = np.array(weights) / sum(weights)
@@ -219,6 +221,10 @@ class VeterinaryPredictor:
 
             is_dangerous = probability > 0.5
             confidence = probability if is_dangerous else 1 - probability
+            
+            # Fix for very low probabilities
+            if confidence < 0.01:  # Handle very low probabilities
+                confidence = 0.01
 
             return {
                 'dangerous': is_dangerous,
@@ -310,6 +316,10 @@ class VeterinaryPredictor:
                 probability = prediction.item()
                 is_dangerous = probability > 0.5
                 confidence = probability if is_dangerous else 1 - probability
+                
+                # Fix for very low probabilities
+                if confidence < 0.01:  # Handle very low probabilities
+                    confidence = 0.01
 
                 return {
                     'dangerous': is_dangerous,

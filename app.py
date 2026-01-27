@@ -510,11 +510,11 @@ class VeterinaryApp:
             risk_class = "supremacy-triggered"
             risk_level = "🚨 EMERGENCY - SUPREMACY RULE TRIGGERED"
             risk_icon = "🚑"
-        elif risk_score < 0.3:
+        elif risk_score < 0.2:
             risk_class = "risk-low"
             risk_level = "LOW RISK"
             risk_icon = "🟢"
-        elif risk_score < 0.7:
+        elif risk_score < 0.5:
             risk_class = "risk-medium"
             risk_level = "MODERATE RISK"
             risk_icon = "🟡"

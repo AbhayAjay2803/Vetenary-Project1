@@ -15,18 +15,37 @@ class VeterinaryDatasetLoader:
         self.le_breed = None
         self.le_age = None
 
-        # Enhanced symptom severity weights with clinical priors
+        # Enhanced symptom severity weights with clinical priors - UPDATED VALUES
         self.symptom_severity_weights = {
             'seizures': 0.95, 'unconsciousness': 0.95, 'bleeding': 0.90, 'paralysis': 0.92,
-            'rapid_breathing': 0.85, 'jaundice': 0.80, 'pale_gums': 0.75, 'abdominal_pain': 0.70,
-            'fever': 0.65, 'vomiting': 0.60, 'diarrhea': 0.55, 'dehydration': 0.70,
-            'weight_loss': 0.50, 'lethargy': 0.45, 'loss_of_appetite': 0.40, 'coughing': 0.35,
-            'sneezing': 0.20, 'itching': 0.15, 'swelling': 0.45, 'nasal_discharge': 0.30,
-            'eye_discharge': 0.30, 'lameness': 0.40, 'constipation': 0.25, 'excessive_thirst': 0.20,
-            'urination_problems': 0.50, 'reproductive_issues': 0.45, 'skin_lesions': 0.35,
-            'hair_loss': 0.20, 'tremors': 0.65, 'pain': 0.55, 'colic': 0.70, 'skin_rashes': 0.25,
-            'respiratory_distress': 0.80, 'anorexia': 0.50, 'weakness': 0.40, 'depression': 0.30,
-            'nausea': 0.35, 'chills': 0.40, 'headache': 0.25, 'muscle_pain': 0.35, 'joint_pain': 0.40,
+            'rapid_breathing': 0.85, 'jaundice': 0.80, 'pale_gums': 0.75, 'abdominal_pain': 0.75,  # Increased from 0.70
+            'fever': 0.70,  # Increased from 0.65
+            'vomiting': 0.65,  # Increased from 0.60
+            'diarrhea': 0.60,  # Increased from 0.55
+            'dehydration': 0.75,  # Increased from 0.70
+            'weight_loss': 0.55,  # Increased from 0.50
+            'lethargy': 0.55,  # Increased from 0.45
+            'loss_of_appetite': 0.50,  # Increased from 0.40
+            'coughing': 0.45,  # Increased from 0.35
+            'sneezing': 0.25,  # Increased from 0.20
+            'itching': 0.15, 'swelling': 0.50,  # Increased from 0.45
+            'nasal_discharge': 0.35,  # Increased from 0.30
+            'eye_discharge': 0.35,  # Increased from 0.30
+            'lameness': 0.45,  # Increased from 0.40
+            'constipation': 0.30,  # Increased from 0.25
+            'excessive_thirst': 0.20, 'urination_problems': 0.50,
+            'reproductive_issues': 0.45, 'skin_lesions': 0.40,  # Increased from 0.35
+            'hair_loss': 0.25,  # Increased from 0.20
+            'tremors': 0.70,  # Increased from 0.65
+            'pain': 0.60,  # Increased from 0.55
+            'colic': 0.75,  # Increased from 0.70
+            'skin_rashes': 0.30,  # Increased from 0.25
+            'respiratory_distress': 0.85,  # Increased from 0.80
+            'anorexia': 0.55,  # Increased from 0.50
+            'weakness': 0.45,  # Increased from 0.40
+            'depression': 0.40,  # Increased from 0.30
+            'nausea': 0.45,  # Increased from 0.35
+            'chills': 0.40, 'headache': 0.25, 'muscle_pain': 0.35, 'joint_pain': 0.40,
             'bloating': 0.30, 'flatulence': 0.15, 'bad_breath': 0.10, 'discharge': 0.25,
             'inflammation': 0.35, 'redness': 0.20, 'wheezing': 0.45, 'gasping': 0.60,
             'convulsions': 0.90, 'twitching': 0.50, 'salivating': 0.25, 'ulcers': 0.40,
@@ -47,9 +66,9 @@ class VeterinaryDatasetLoader:
             'respiratory': ['rapid_breathing', 'coughing', 'sneezing', 'nasal_discharge',
                           'respiratory_distress', 'wheezing', 'gasping', 'pneumonia', 'dyspnea'],
             'gastrointestinal': ['vomiting', 'diarrhea', 'constipation', 'bloating', 'flatulence',
-                               'abdominal_pain', 'colic', 'loss_of_appetite', 'dehydration'],
+                               'abdominal_pain', 'colic', 'loss_of_appetite', 'dehydration', 'nausea'],
             'systemic': ['fever', 'lethargy', 'weight_loss', 'weakness', 'jaundice', 'pale_gums',
-                        'anemia', 'shock', 'coma', 'infection', 'malaise', 'fatigue'],
+                        'anemia', 'shock', 'coma', 'infection', 'malaise', 'fatigue', 'depression'],
             'dermatological': ['itching', 'skin_lesions', 'hair_loss', 'skin_rashes', 'ulcers',
                               'lesions', 'abscesses', 'inflammation', 'redness']
         }
@@ -100,7 +119,7 @@ class VeterinaryDatasetLoader:
         
         np.random.seed(42)
         data = []
-        target_positive_rate = 0.6  # Aim for 60% positive cases
+        target_positive_rate = 0.5  # Changed from 0.6 to 0.5 for better balance
 
         print("[] Creating dataset...")
         for i in tqdm(range(n_samples), desc="Generating samples"):
@@ -131,6 +150,10 @@ class VeterinaryDatasetLoader:
                         correlated_symptoms.append('dehydration')
                     elif symptom == 'diarrhea' and 'dehydration' in remaining_symptoms:
                         correlated_symptoms.append('dehydration')
+                    elif symptom == 'abdominal_pain' and 'nausea' in remaining_symptoms:
+                        correlated_symptoms.append('nausea')
+                    elif symptom == 'lethargy' and 'depression' in remaining_symptoms:
+                        correlated_symptoms.append('depression')
                 
                 correlated_symptoms = list(set(correlated_symptoms))
                 remaining_after_correlation = [s for s in remaining_symptoms if s not in correlated_symptoms]
@@ -151,22 +174,29 @@ class VeterinaryDatasetLoader:
             
             symptoms = symptoms[:num_symptoms]  # Ensure we don't exceed desired count
 
-            # Enhanced danger assessment
-            high_risk_count = sum(1 for s in symptoms if self.symptom_severity_weights.get(s, 0) > 0.7)
-            medium_risk_count = sum(1 for s in symptoms if 0.4 < self.symptom_severity_weights.get(s, 0) <= 0.7)
+            # Enhanced danger assessment with better thresholds
+            symptom_count_factor = len(symptoms) * 0.05  # 5% per symptom
+            severity_sum = sum(self.symptom_severity_weights.get(s, 0.1) for s in symptoms)
+            avg_severity = severity_sum / max(len(symptoms), 1)
 
-            base_danger = (high_risk_count * 0.7 + medium_risk_count * 0.4) / max(len(symptoms), 1)
+            # New danger calculation
+            base_danger = (avg_severity * 0.6) + (symptom_count_factor * 0.4)
 
-            # Clinical prior interactions
+            # Clinical interactions (add more)
             interaction_boost = 0
-            if 'fever' in symptoms and 'lethargy' in symptoms:
-                interaction_boost += 0.1
-            if 'vomiting' in symptoms and 'diarrhea' in symptoms:
-                interaction_boost += 0.15
-            if 'seizures' in symptoms and 'unconsciousness' in symptoms:
-                interaction_boost += 0.25
+            symptom_set = set(symptoms)
 
-            danger_score = base_danger + interaction_boost + np.random.normal(0, 0.02)
+            # Gastrointestinal cluster interaction
+            gi_symptoms = {'vomiting', 'diarrhea', 'abdominal_pain', 'nausea', 'loss_of_appetite'}
+            if len(symptom_set.intersection(gi_symptoms)) >= 2:
+                interaction_boost += 0.15
+
+            # Systemic cluster interaction
+            systemic_symptoms = {'fever', 'lethargy', 'depression', 'weakness', 'loss_of_appetite'}
+            if len(symptom_set.intersection(systemic_symptoms)) >= 2:
+                interaction_boost += 0.10
+
+            danger_score = base_danger + interaction_boost
 
             # Enhanced demographic factors
             if age == 'senior':
@@ -193,7 +223,7 @@ class VeterinaryDatasetLoader:
                 dangerous = 'No'
             else:
                 prob_positive = (danger_score - 0.2) / 0.3
-                adjusted_prob = prob_positive * (target_positive_rate / 0.6)
+                adjusted_prob = prob_positive * (target_positive_rate / 0.5)
                 dangerous = 'Yes' if np.random.random() < adjusted_prob else 'No'
 
             record = {
@@ -205,8 +235,8 @@ class VeterinaryDatasetLoader:
                 'Symptom_Count': len(symptoms),
                 'Dangerous': dangerous,
                 'Danger_Score': danger_score,
-                'High_Risk_Count': high_risk_count,
-                'Medium_Risk_Count': medium_risk_count,
+                'High_Risk_Count': 0,
+                'Medium_Risk_Count': 0,
             }
 
             for j in range(10):
