@@ -990,6 +990,13 @@ def main():
         app.run()
     except Exception as e:
         st.error(f"Application error: {e}")
+# In app.py, replace the import block with:
+    try:
+        from utils.multimodal_helpers import get_multimodal_features
+        MULTIMODAL_AVAILABLE = True
+    except ImportError as e:
+        MULTIMODAL_AVAILABLE = False
+        st.sidebar.info(f"ℹ️ Multimodal features not available: {e}")
 
 if __name__ == "__main__":
     main()
