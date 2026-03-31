@@ -356,3 +356,37 @@ class VeterinaryPredictor:
             'horse': ['arabian', 'quarter_horse', 'thoroughbred']
         }
         return breed_mapping.get(animal, ['mixed'])
+    def predict_with_multimodal(self, animal, breed, age, weight, symptoms,
+                            audio_path=None, thermal_path=None, video_path=None):
+        """
+        Enhanced prediction that includes multimodal features.
+        Falls back to standard prediction if multimodal features unavailable.
+        """
+        # Get standard prediction first
+        result = self.predict_ensemble(animal, breed, age, weight, symptoms)
+        
+        # Add multimodal features if available
+        if audio_path or thermal_path or video_path:
+            try:
+                from utils.multimodal_helpers import get_multimodal_features
+                multimodal_feats = get_multimodal_features(audio_path, thermal_path, video_path)
+                
+                # Store in result for report generation
+                result['multimodal_features'] = {
+                    'audio_stress': multimodal_feats[0],
+                    'thermal_abnormal': multimodal_feats[2],
+                    'gait_lameness': multimodal_feats[4]
+                }
+                
+                # Optionally adjust risk based on multimodal features
+                # This is a simple example - you can implement more sophisticated fusion
+                multimodal_risk = np.mean([multimodal_feats[0], multimodal_feats[2], multimodal_feats[4]])
+                if multimodal_risk > 0.7:
+                    result['ensemble']['dangerous'] = True
+                    result['ensemble']['probability'] = max(result['ensemble']['probability'], multimodal_risk)
+                    result['ensemble']['supremacy_reason'] += f"; Multimodal analysis shows {multimodal_risk:.0%} risk"
+                    
+            except Exception as e:
+                print(f"⚠️ Multimodal feature extraction failed: {e}")
+        
+        return result

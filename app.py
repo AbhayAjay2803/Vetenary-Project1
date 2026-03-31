@@ -1,4 +1,4 @@
-# app.py - Complete version with better error handling
+# app.py - Complete version with multimodal support and better error handling
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -43,9 +43,13 @@ except ImportError as e:
     st.error(f"Import error: {e}. Please check your module structure.")
     st.stop()
 
-# Page configuration and CSS remains the same as before...
-# [The rest of your app.py code remains unchanged - it's too long to include here]
-# Just ensure you have the updated CSS and functionality from previous versions
+# Optional multimodal imports (fail gracefully if not installed)
+try:
+    from utils.multimodal_helpers import get_multimodal_features
+    MULTIMODAL_AVAILABLE = True
+except ImportError:
+    MULTIMODAL_AVAILABLE = False
+    st.sidebar.info("ℹ️ Multimodal features (audio/thermal/video) not available. Install optional dependencies.")
 
 # Page configuration
 st.set_page_config(
@@ -394,6 +398,12 @@ class VeterinaryApp:
         else:
             st.sidebar.error("❌ **Models Inactive**")
         
+        # Multimodal status
+        if MULTIMODAL_AVAILABLE:
+            st.sidebar.success("🎤 **Multimodal Support Active**")
+        else:
+            st.sidebar.info("ℹ️ **Multimodal features:** Install optional dependencies")
+        
         # Supremacy Rules Info
         st.sidebar.markdown("### 🚨 Fail-Safe Rules")
         st.sidebar.info("""
@@ -413,20 +423,21 @@ class VeterinaryApp:
         1. Select animal type and breed
         2. Choose age group and weight
         3. Select all relevant symptoms
-        4. Click 'Assess Health Status'
-        5. Review risk assessment
-        6. Generate detailed report
+        4. (Optional) Upload audio, thermal image, or video for enhanced analysis
+        5. Click 'Assess Health Status'
+        6. Review risk assessment
+        7. Generate detailed report
         
         **Note:** Always consult a licensed veterinarian for professional diagnosis.
         """)
         
         # Footer
         st.sidebar.markdown("---")
-        st.sidebar.markdown("**Veterinary Health System v2.1**")
+        st.sidebar.markdown("**Veterinary Health System v2.2**")
         st.sidebar.markdown("*Professional Animal Care Assessment*")
 
     def render_input_section(self):
-        """Render input section for animal information"""
+        """Render input section for animal information and multimodal uploads"""
         st.markdown("### 🐾 Patient Information")
         
         # Create a nice container for the input section
@@ -482,16 +493,60 @@ class VeterinaryApp:
             symptom_analysis = format_symptom_analysis(symptoms, self.predictor)
             st.markdown(symptom_analysis, unsafe_allow_html=True)
         
+        # ========== MULTIMODAL INPUT SECTION (COLLAPSIBLE) ==========
+        multimodal_data = {'audio_path': None, 'thermal_path': None, 'video_path': None}
+        temp_files = []
+        
+        with st.expander("🎤 Optional: Upload Multimodal Data for Enhanced Analysis"):
+            st.markdown("*Upload audio, thermal images, or gait videos to enrich the assessment*")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                uploaded_audio = st.file_uploader("Audio (vocalization)", type=['wav', 'mp3', 'm4a'])
+            with col2:
+                uploaded_thermal = st.file_uploader("Thermal Image", type=['jpg', 'png', 'tiff'])
+            with col3:
+                uploaded_video = st.file_uploader("Gait Video", type=['mp4', 'mov', 'avi'])
+            
+            # Save uploaded files to temporary paths
+            if uploaded_audio:
+                audio_path = f"temp_audio_{datetime.now().timestamp()}.wav"
+                with open(audio_path, 'wb') as f:
+                    f.write(uploaded_audio.getbuffer())
+                multimodal_data['audio_path'] = audio_path
+                temp_files.append(audio_path)
+                st.success(f"✅ Audio uploaded: {uploaded_audio.name}")
+            
+            if uploaded_thermal:
+                thermal_path = f"temp_thermal_{datetime.now().timestamp()}.jpg"
+                with open(thermal_path, 'wb') as f:
+                    f.write(uploaded_thermal.getbuffer())
+                multimodal_data['thermal_path'] = thermal_path
+                temp_files.append(thermal_path)
+                st.success(f"✅ Thermal image uploaded: {uploaded_thermal.name}")
+            
+            if uploaded_video:
+                video_path = f"temp_video_{datetime.now().timestamp()}.mp4"
+                with open(video_path, 'wb') as f:
+                    f.write(uploaded_video.getbuffer())
+                multimodal_data['video_path'] = video_path
+                temp_files.append(video_path)
+                st.success(f"✅ Video uploaded: {uploaded_video.name}")
+        
+        # Store temporary file paths in session state for cleanup later
+        st.session_state['temp_files'] = temp_files
+        
         return {
             'animal': animal,
             'breed': breed,
             'age': age,
             'weight': weight,
-            'symptoms': symptoms
+            'symptoms': symptoms,
+            'multimodal': multimodal_data
         }
 
     def render_prediction_results(self, prediction_result, animal_info, symptoms):
-        """Render prediction results with SUPREMACY RULE display"""
+        """Render prediction results with SUPREMACY RULE display and multimodal insights"""
         if not isinstance(prediction_result, dict) or 'ensemble' not in prediction_result:
             st.error(f"Prediction error: {prediction_result}")
             return
@@ -644,6 +699,24 @@ class VeterinaryApp:
                 # Display high-risk symptoms if any
                 if high_risk_symptoms:
                     st.error(f"🚨 **High-Risk Symptoms Detected:** {', '.join(high_risk_symptoms)}")
+        
+        # Display multimodal insights if available
+        if 'multimodal_features' in prediction_result:
+            st.markdown("### 🎤 Multimodal Analysis Insights")
+            mf = prediction_result['multimodal_features']
+            col_m1, col_m2, col_m3 = st.columns(3)
+            with col_m1:
+                stress_val = mf.get('audio_stress', 0.5)
+                stress_color = "🔴" if stress_val > 0.7 else ("🟡" if stress_val > 0.4 else "🟢")
+                st.metric("Audio Stress Indicator", f"{stress_color} {stress_val:.0%}")
+            with col_m2:
+                thermal_val = mf.get('thermal_abnormal', 0.5)
+                thermal_color = "🔴" if thermal_val > 0.7 else ("🟡" if thermal_val > 0.4 else "🟢")
+                st.metric("Thermal Abnormality", f"{thermal_color} {thermal_val:.0%}")
+            with col_m3:
+                gait_val = mf.get('gait_lameness', 0.5)
+                gait_color = "🔴" if gait_val > 0.7 else ("🟡" if gait_val > 0.4 else "🟢")
+                st.metric("Gait Lameness", f"{gait_color} {gait_val:.0%}")
         
         # AI Generated Report Section
         st.markdown("---")
@@ -826,7 +899,7 @@ class VeterinaryApp:
                 - encoders.joblib
                 """)
             else:
-                # Input section
+                # Input section (includes multimodal upload)
                 animal_info = self.render_input_section()
                 
                 # Assessment button with enhanced visibility
@@ -847,20 +920,47 @@ class VeterinaryApp:
                         else:
                             with st.spinner("🤖 **Analyzing health status with advanced assessment models...**"):
                                 try:
-                                    prediction_result = self.predictor.predict_ensemble(
-                                        animal_info['animal'],
-                                        animal_info['breed'], 
-                                        animal_info['age'],
-                                        animal_info['weight'],
-                                        animal_info['symptoms']
-                                    )
+                                    # Use the multimodal prediction method if available
+                                    multimodal_data = animal_info.get('multimodal', {})
+                                    if hasattr(self.predictor, 'predict_with_multimodal') and MULTIMODAL_AVAILABLE:
+                                        prediction_result = self.predictor.predict_with_multimodal(
+                                            animal_info['animal'],
+                                            animal_info['breed'],
+                                            animal_info['age'],
+                                            animal_info['weight'],
+                                            animal_info['symptoms'],
+                                            audio_path=multimodal_data.get('audio_path'),
+                                            thermal_path=multimodal_data.get('thermal_path'),
+                                            video_path=multimodal_data.get('video_path')
+                                        )
+                                    else:
+                                        # Fallback to standard ensemble
+                                        prediction_result = self.predictor.predict_ensemble(
+                                            animal_info['animal'],
+                                            animal_info['breed'], 
+                                            animal_info['age'],
+                                            animal_info['weight'],
+                                            animal_info['symptoms']
+                                        )
                                     
                                     # Store prediction in session state
                                     st.session_state.prediction_result = prediction_result
                                     st.session_state.animal_info = animal_info
+                                    
+                                    # Clean up temporary multimodal files
+                                    for temp_file in st.session_state.get('temp_files', []):
+                                        if os.path.exists(temp_file):
+                                            os.remove(temp_file)
+                                    st.session_state['temp_files'] = []
+                                    
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"❌ **Assessment Error:** {e}")
+                                    # Clean up anyway
+                                    for temp_file in st.session_state.get('temp_files', []):
+                                        if os.path.exists(temp_file):
+                                            os.remove(temp_file)
+                                    st.session_state['temp_files'] = []
                 
                 # Display results if available
                 if 'prediction_result' in st.session_state and st.session_state.animal_info is not None:
@@ -882,6 +982,8 @@ def main():
         st.session_state.generated_report = None
     if 'generating_report' not in st.session_state:
         st.session_state.generating_report = False
+    if 'temp_files' not in st.session_state:
+        st.session_state.temp_files = []
     
     try:
         app = VeterinaryApp()
