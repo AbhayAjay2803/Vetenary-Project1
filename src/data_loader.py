@@ -119,7 +119,7 @@ class VeterinaryDatasetLoader:
         
         np.random.seed(42)
         data = []
-        target_positive_rate = 0.5  # Changed from 0.6 to 0.5 for better balance
+        target_positive_rate = 0.2  # Changed from 0.6 to 0.5 for better balance
 
         print("[] Creating dataset...")
         for i in tqdm(range(n_samples), desc="Generating samples"):
@@ -249,7 +249,13 @@ class VeterinaryDatasetLoader:
         dangerous_count = (df['Dangerous'] == 'Yes').sum()
         safe_count = (df['Dangerous'] == 'No').sum()
         print(f"[] Class balance - Dangerous: {dangerous_count} ({dangerous_count/len(df)*100:.1f}%), Safe: {safe_count} ({safe_count/len(df)*100:.1f}%)")
+        # After selecting symptoms, compute:
+        high_risk_count = sum(1 for s in symptoms if self.symptom_severity_weights.get(s, 0) > 0.7)
+        medium_risk_count = sum(1 for s in symptoms if 0.4 < self.symptom_severity_weights.get(s, 0) <= 0.7)
 
+# Then add to the record:
+        record['High_Risk_Count'] = high_risk_count
+        record['Medium_Risk_Count'] = medium_risk_count
         return df
 
     def preprocess_data(self, df):

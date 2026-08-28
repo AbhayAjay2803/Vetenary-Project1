@@ -192,7 +192,7 @@ def main():
     print("[] Training Improved Structured Clinical Transformer...")
     sct_trainer = ImprovedSCTTrainer(feature_engineer, data_loader)
     sct_results = sct_trainer.train_improved_sct(
-        sct_features, epochs=35, learning_rate=1.5e-3, batch_size=64  # Increased epochs for larger dataset
+        sct_features, epochs=50, learning_rate=1e-3, batch_size=128
     )
     
     # Save SCT model
@@ -206,7 +206,7 @@ def main():
     print("[] Training LSTM Model...")
     lstm_trainer = LSTMTrainer(feature_engineer, data_loader)
     lstm_results = lstm_trainer.train_lstm(
-        sct_features, epochs=25, learning_rate=1e-3, batch_size=64  # Increased epochs for larger dataset
+        sct_features, epochs=40, learning_rate=1e-3, batch_size=128  # Increased epochs for larger dataset
     )
     
     # Save LSTM model
