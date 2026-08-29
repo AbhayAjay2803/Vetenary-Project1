@@ -1,4 +1,4 @@
-# src/trainer.py
+# src/trainer.py (only SCT part shown, LSTM unchanged)
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -33,7 +33,7 @@ class ImprovedSCTTrainer:
         )
         return DataLoader(tensor_dataset, batch_size=batch_size, shuffle=shuffle)
 
-    def train_improved_sct(self, features_dict, epochs=60, learning_rate=5e-4, batch_size=128):
+    def train_improved_sct(self, features_dict, epochs=80, learning_rate=5e-4, batch_size=128):
         print("[] Training IMPROVED Structured Clinical Transformer...")
 
         dataset_size = len(features_dict['symptom_indices'])
@@ -65,14 +65,14 @@ class ImprovedSCTTrainer:
             num_clusters=len(self.feature_engineer.cluster_to_idx),
             d_model=384,
             nhead=8,
-            num_layers=4,
+            num_layers=6,
             dropout=0.2
         )
         self.model_config = self.model.config
         print(f"[] IMPROVED SCT initialized with {sum(p.numel() for p in self.model.parameters()):,} parameters")
 
-        # pos_weight = 2.0 to favour recall
-        pos_weight = torch.tensor([2.0], dtype=torch.float32)
+        # Higher pos_weight to push recall
+        pos_weight = torch.tensor([2.2], dtype=torch.float32)
         print(f"[] pos_weight = {pos_weight.item():.2f}")
 
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
@@ -89,7 +89,7 @@ class ImprovedSCTTrainer:
         )
 
         best_val_f1 = 0
-        patience = 15
+        patience = 20
         patience_counter = 0
 
         print("\n[] Starting IMPROVED SCT Training...")
@@ -235,7 +235,8 @@ class ImprovedSCTTrainer:
             'loss': avg_loss
         }
 
-# LSTMTrainer (similarly speed up)
+
+# LSTMTrainer remains exactly as you have it – I won't repeat it here.
 class LSTMTrainer:
     def __init__(self, feature_engineer, data_loader):
         self.feature_engineer = feature_engineer

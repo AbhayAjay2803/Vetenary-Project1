@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class ImprovedStructuredClinicalTransformer(nn.Module):
     def __init__(self, num_symptoms, num_animals, num_breeds, num_ages, num_clusters,
-                 d_model=384, nhead=8, num_layers=4, dropout=0.2):
+                 d_model=384, nhead=8, num_layers=6, dropout=0.2):
         super().__init__()
         self.d_model = d_model
         self.config = {
@@ -145,7 +145,7 @@ class ImprovedStructuredClinicalTransformer(nn.Module):
         return logits.squeeze()
 
 
-# LSTM (unchanged, keep as is)
+# LSTM – unchanged (keep your existing version)
 class VeterinaryLSTM(nn.Module):
     def __init__(self, num_symptoms, num_animals, num_breeds, num_ages,
                  hidden_size=128, num_layers=2, dropout=0.3):

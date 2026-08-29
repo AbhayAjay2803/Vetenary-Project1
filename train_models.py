@@ -192,7 +192,7 @@ def main():
     print("[] Training Improved Structured Clinical Transformer...")
     sct_trainer = ImprovedSCTTrainer(feature_engineer, data_loader)
     sct_results = sct_trainer.train_improved_sct(
-        sct_features, epochs=50, learning_rate=1e-3, batch_size=128
+        sct_features, epochs=80, learning_rate=5e-4, batch_size=128
     )
     
     # Save SCT model
